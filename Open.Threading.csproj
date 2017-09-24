@@ -8,11 +8,16 @@
     <Description>Useful set of extensions and classes for simplifying and optimizing thread safe operations and synchronization.
 
 Part of the "Open" set of libraries.</Description>
-    <PackageLicenseUrl>https://github.com/electricessence/Open/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageLicenseUrl>https://github.com/electricessence/Open.Threading/blob/master/LISCENSE.md</PackageLicenseUrl>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Version>1.0.1</Version>
     <AssemblyVersion>1.0.0.1</AssemblyVersion>
     <FileVersion>1.0.0.1</FileVersion>
+    <Copyright>https://github.com/electricessence/Open.Threading/blob/master/LISCENSE.md</Copyright>
+    <PackageProjectUrl>https://github.com/electricessence/Open.Threading/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/electricessence/Open.Threading/</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>dotnet, dotnet-core, dotnetcore, cs, collections, extensions, threadsafe, thread-safe, readwrite, read-write, readerwriterlock, readerwriterlockslim</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
