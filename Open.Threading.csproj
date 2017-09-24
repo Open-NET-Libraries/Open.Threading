@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp1.1</TargetFramework>
+    <Authors>electricessence</Authors>
+    <Company />
+    <Product />
+    <Description>Useful set of extensions and classes for simplifying and optimizing thread safe operations and synchronization.
+
+Part of the "Open" set of libraries.</Description>
+    <PackageLicenseUrl>https://github.com/electricessence/Open/blob/master/LICENSE</PackageLicenseUrl>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Version>1.0.1</Version>
+    <AssemblyVersion>1.0.0.1</AssemblyVersion>
+    <FileVersion>1.0.0.1</FileVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="AsyncReadWriteModificationSynchronizer.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Open.Diagnostics" Version="1.0.1" />
+    <PackageReference Include="Open.Threading.ReadWrite" Version="1.0.1" />
+  </ItemGroup>
+
+</Project>
