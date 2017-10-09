@@ -334,7 +334,7 @@ namespace Open.Threading
         /// <typeparam name="TSync">Type of the object sync context.</typeparam>
         /// <param name="syncObject">The main object that defines the synchronization context.</param>
         /// <param name="key">The key that represents what value will change.</param>
-        /// <param name="condition">The condition funciton that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
+        /// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
         /// <param name="closure">The function to execute while under a write lock if the condition remains true.</param>
         /// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
         /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
@@ -369,7 +369,7 @@ namespace Open.Threading
         /// <param name="syncObject">The main object that defines the synchronization context.</param>
         /// <param name="key">The key that represents what value will change.</param>
         /// <param name="result">The reference to become the result if a result is acquired from the closure during write.</param>
-        /// <param name="condition">The condition funciton that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
+        /// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
         /// <param name="closure">The function to execute while under a write lock if the condition remains true.  'result' becomes the return value.</param>
         /// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
         /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
@@ -404,7 +404,7 @@ namespace Open.Threading
         /// <typeparam name="TSync">Type of the object sync context.</typeparam>
         /// <param name="syncObject">The main object that defines the synchronization context.</param>
         /// <param name="key">The key that represents what value will change.</param>
-        /// <param name="condition">The condition funciton that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
+        /// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
         /// <param name="closure">The function to execute while under a write lock if the condition remains true.</param>
         /// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
         /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
@@ -442,7 +442,7 @@ namespace Open.Threading
         /// <param name="syncObject">The main object that defines the synchronization context.</param>
         /// <param name="key">The key that represents what value will change.</param>
         /// <param name="result">The reference to become the result if a result is acquired from the closure during write.</param>
-        /// <param name="condition">The condition funciton that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
+        /// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
         /// <param name="closure">The function to execute while under a write lock if the condition remains true.  'result' becomes the return value.</param>
         /// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
         /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
@@ -484,7 +484,7 @@ namespace Open.Threading
         /// </summary>
         /// <typeparam name="TSync">Type of the object sync context.</typeparam>
         /// <param name="syncObject">The main object that defines the synchronization context.</param>
-        /// <param name="condition">The condition funciton that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
+        /// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
         /// <param name="closure">The function to execute while under a write lock if the condition remains true.</param>
         /// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
         /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
@@ -512,7 +512,7 @@ namespace Open.Threading
         /// <typeparam name="T">Type of the result.</typeparam>
         /// <param name="syncObject">The main object that defines the synchronization context.</param>
         /// <param name="result">The reference to become the result if a result is acquired from the closure during write.</param>
-        /// <param name="condition">The condition funciton that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
+        /// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
         /// <param name="closure">The function to execute while under a write lock if the condition remains true.  'result' becomes the return value.</param>
         /// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
         /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
