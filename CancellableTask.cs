@@ -22,7 +22,7 @@ namespace Open.Threading
 			if (!onlyIfNotRunning || !isRunning)
 				ts.Cancel();
 
-			return !isRunning; 
+			return !isRunning;
 		}
 
 		public bool Cancel()
@@ -57,16 +57,6 @@ namespace Open.Threading
 		{
 		}
 
-		public static CancellableTask Prepare(Action action)
-		{
-			var ts = new CancellationTokenSource();
-			var token = ts.Token;
-			return new CancellableTask(action, token)
-			{
-				TokenSource = ts // Could potentially call cancel before run actually happens.
-			};
-		}
-
 		public static CancellableTask Start(TimeSpan delay, Action action = null, TaskScheduler scheduler = null)
 		{
 			CancellableTask cancellable;
@@ -88,13 +78,26 @@ namespace Open.Threading
 
 				if (delay == TimeSpan.Zero)
 				{
-					cancellable.Start(scheduler); 
+					cancellable.Start(scheduler);
 				}
 				else
 				{
-					cancellable.ContinueWith(t => cancellable.Cancel()); // If this is arbitrarily run before the delay, then cancel the delay.
+					int runState = 0;
+
+					cancellable
+						.ContinueWith(t =>
+						{
+							// If this is arbitrarily run before the delay, then cancel the delay.
+							if (Interlocked.Increment(ref runState)<2)
+								cancellable.Cancel();
+						});
+
 					Delay(delay, token)
-						.OnFullfilled(() => cancellable.EnsureStarted(scheduler));
+						.OnFullfilled(() =>
+						{
+							Interlocked.Increment(ref runState);
+							cancellable.EnsureStarted(scheduler);
+						});
 				}
 			}
 
@@ -113,22 +116,29 @@ namespace Open.Threading
 	}
 
 	/// <summary>
-	/// A Task sub-class that simplifies cancelling.
+	/// A Task&lt;T&gt; sub-class that simplifies cancelling.
 	/// </summary>
 	public class CancellableTask<T> : Task<T>, ICancellable
 	{
 		protected CancellationTokenSource TokenSource;
 
-		public bool Cancel()
+		public bool Cancel(bool onlyIfNotRunning)
 		{
 			var ts = Interlocked.Exchange(ref TokenSource, null); // Cancel can only be called once.
 
 			if (ts == null || ts.IsCancellationRequested || IsCanceled || IsFaulted || IsCompleted)
 				return false;
 
-			ts.Cancel();
+			var isRunning = Status == TaskStatus.Running;
+			if (!onlyIfNotRunning || !isRunning)
+				ts.Cancel();
 
-			return Status != TaskStatus.Running; // should never be running, but just to be correct...
+			return !isRunning;
+		}
+
+		public bool Cancel()
+		{
+			return Cancel(false);
 		}
 
 		public void Dispose()
@@ -146,20 +156,10 @@ namespace Open.Threading
 		{
 		}
 
-		public static CancellableTask<T> Prepare(Func<T> action)
-		{
-			var ts = new CancellationTokenSource();
-			var token = ts.Token;
-			return new CancellableTask<T>(action, token)
-			{
-				TokenSource = ts // Could potentially call cancel before run actually happens.
-			};
-		}
-
-
-		public static CancellableTask<T> Start(TimeSpan delay, Func<T> action = null)
+		public static CancellableTask<T> Start(TimeSpan delay, Func<T> action = null, TaskScheduler scheduler = null)
 		{
 			CancellableTask<T> cancellable;
+			scheduler = scheduler ?? TaskScheduler.Default;
 
 			if (delay < TimeSpan.Zero)
 			{
@@ -177,28 +177,40 @@ namespace Open.Threading
 
 				if (delay == TimeSpan.Zero)
 				{
-					cancellable.Start();
+					cancellable.Start(scheduler);
 				}
 				else
 				{
-					cancellable.ContinueWith(t => cancellable.Cancel()); // If this is arbitrarily run before the delay, then cancel the delay.
+					int runState = 0;
+
+					cancellable
+						.ContinueWith(t =>
+						{
+							// If this is arbitrarily run before the delay, then cancel the delay.
+							if (Interlocked.Increment(ref runState) < 2)
+								cancellable.Cancel();
+						});
+
 					Delay(delay, token)
-						.OnFullfilled(() => cancellable.Start());
+						.OnFullfilled(() =>
+						{
+							Interlocked.Increment(ref runState);
+							cancellable.EnsureStarted(scheduler);
+						});
 				}
 			}
 
 			return cancellable;
 		}
 
-		public static CancellableTask<T> Start(int millisecondsDelay, Func<T> action)
+		public static CancellableTask<T> Start(int millisecondsDelay, Func<T> action = null)
 		{
 			return Start(TimeSpan.FromMilliseconds(millisecondsDelay), action);
 		}
 
-		public static CancellableTask<T> Start(Func<T> action)
+		public static CancellableTask<T> Start(Func<T> action, TimeSpan? delay = null, TaskScheduler scheduler = null)
 		{
-			return Start(TimeSpan.Zero, action);
+			return Start(delay ?? TimeSpan.Zero, action, scheduler);
 		}
 	}
-
 }
