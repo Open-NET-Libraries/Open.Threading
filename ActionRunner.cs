@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Open.Threading;
 
 namespace Open.Threading
 {
@@ -21,7 +22,7 @@ namespace Open.Threading
 
 		public static ActionRunner Create<T>(Func<T> action, TaskScheduler scheduler = null)
 		{
-			return new ActionRunner(()=> { action(); }, scheduler);
+			return new ActionRunner(() => { action(); }, scheduler);
 		}
 
 		Action _action;
@@ -69,7 +70,13 @@ namespace Open.Threading
 
 		public bool Cancel(bool onlyIfNotRunning)
 		{
-			return _task?.Value.Cancel(onlyIfNotRunning) ?? false;
+			var t = _task;
+			if (t?.Cancel(onlyIfNotRunning) ?? false)
+			{
+				Interlocked.CompareExchange(ref _task, null, t);
+				return true;
+			}
+			return false;
 		}
 
 		public bool Cancel()
@@ -95,7 +102,7 @@ namespace Open.Threading
 		{
 			get
 			{
-				return _task?.Value.IsActive() ?? false;
+				return _task?.IsActive() ?? false;
 			}
 		}
 
@@ -107,14 +114,14 @@ namespace Open.Threading
 			GetAction().Invoke();
 		}
 
-		// Use a Lazy to ensure only 1 time initialization.
-		Lazy<CancellableTask> _task;
+		readonly object _taskLock = new object();
+		CancellableTask _task;
 		CancellableTask Prepare(TimeSpan delay)
 		{
 			LastStart = DateTime.Now;
 			var task = CancellableTask.Start(GetAction(), delay, _scheduler);
 			task
-				.OnFaulted(ex=>
+				.OnFaulted(ex =>
 				{
 					LastFault = ex;
 				})
@@ -123,8 +130,9 @@ namespace Open.Threading
 					LastComplete = DateTime.Now;
 					Interlocked.Increment(ref _count);
 				})
-				.ContinueWith(t => {
-					Interlocked.Exchange(ref _task, null);
+				.ContinueWith(t =>
+				{
+					Interlocked.CompareExchange(ref _task, null, task);
 				});
 			return task;
 		}
@@ -136,9 +144,22 @@ namespace Open.Threading
 
 		public CancellableTask Defer(TimeSpan delay, bool clearSchedule = true)
 		{
-			if (clearSchedule) Cancel(true); // Don't cancel defered if already running.
-			var task = LazyInitializer.EnsureInitialized(
-				ref _task, () => new Lazy<CancellableTask>(()=>Prepare(delay))).Value;
+			if (clearSchedule)
+			{
+				Cancel(true); // Don't cancel defered if already running.
+			}
+			CancellableTask task = null;
+			// Locking seems ugly, but it's difficult to properly synchronize the creation and cleanup of the underlying task without it. :/
+			// The important part is:
+			// 1) Only initializing once.
+			// 2) Allowing for proper cleanup after run which requires a reference to the task.
+			ThreadSafety.LockConditional(
+				_taskLock,
+				() => (task = _task) == null,
+				() =>
+				{
+					Interlocked.Exchange(ref _task, task = Prepare(delay));
+				});
 			return task;
 		}
 
