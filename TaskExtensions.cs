@@ -5,6 +5,9 @@ namespace Open.Threading
 {
 	public static class TaskExtensions
 	{
+		/// <summary>
+		/// Returns true if the target Task has not yet run, is waiting, or is running, else returns false.
+		/// </summary>
 		public static bool IsActive(this Task target)
 		{
 			if (target == null)
@@ -18,83 +21,130 @@ namespace Open.Threading
 				case TaskStatus.WaitingForChildrenToComplete:
 				case TaskStatus.WaitingToRun:
 					return true;
-				case TaskStatus.Canceled:
-				case TaskStatus.Faulted:
-				case TaskStatus.RanToCompletion:
-					return false;
+				//case TaskStatus.Canceled:
+				//case TaskStatus.Faulted:
+				//case TaskStatus.RanToCompletion:
+				//	return false;
 			}
 
 			return false;
 		}
 
-
-
-		public static Task OnFullfilled(this Task target, Action action)
+		/// <summary>
+		/// Checks the status of the task and attempts to start it if waiting to start (TaskStatus.Created).
+		/// </summary>
+		/// <param name="scheduler">Optional scheduler to use.</param>
+		/// <returns>True if start attempt was successful.</returns>
+		public static bool EnsureStarted(this Task target, TaskScheduler scheduler = null)
 		{
-			return target.ContinueWith(task =>
+			if(target==null) throw new NullReferenceException();
+
+			if(target.Status==TaskStatus.Created)
 			{
-				if (task.IsCompleted) action();
-			});
+				try
+				{
+					if (scheduler == null)
+						target.Start();
+					else
+						target.Start(scheduler);
+
+					return true;
+				}
+				catch(InvalidOperationException)
+				{
+					// Even though we've checked the status, it's possible it could have been started.  We can't guarantee proper handling without a trap here.
+					if (target.Status == TaskStatus.Created)
+						throw; // Something wierd must have happened if we arrived here.
+				}
+			}
+
+			return false;
 		}
 
-		public static Task OnFullfilled<T>(this Task target, Func<T> action)
+		/// <summary>
+		/// Utility method that can be chained with other methods for reacting to Task results.  Only invokes the action if completed and not cancelled.
+		/// </summary>
+		/// <typeparam name="TTask">The return type is the same as the target.</typeparam>
+		/// <param name="action">The action to perform if fullfulled.</param>
+		/// <returns>The target object.  Allows for method chaining.</returns>
+		public static TTask OnFullfilled<TTask>(this TTask target, Action action)
+			where TTask : Task
 		{
-			return target.ContinueWith(task =>
+			target.ContinueWith(task =>
 			{
-				if (task.IsCompleted) action();
+				if (task.IsCompleted && !task.IsCanceled) action();
 			});
+
+			return target;
 		}
 
-		public static Task<T> OnFullfilled<T>(this Task<T> target, Action<T> action)
+		/// <summary>
+		/// Utility method that can be chained with other methods for reacting to Task results.  Only invokes the action if completed and not cancelled.
+		/// </summary>
+		/// <typeparam name="TTask">The return type is the same as the target.</typeparam>
+		/// <param name="action">The action to perform if fullfulled.</param>
+		/// <returns>The target object.  Allows for method chaining.</returns>
+		public static TTask OnFullfilled<TTask,T>(this TTask target, Func<T> action)
+			where TTask : Task
 		{
-			return target.ContinueWith(task =>
+			target.ContinueWith(task =>
 			{
-				if (task.IsCompleted) action(task.Result);
-				return task.Result;
+				if (task.IsCompleted && !task.IsCanceled) action();
 			});
+
+			return target;
 		}
 
-		// Tasks don't behave like promises so even though this seems like we should call this "Catch", it's not doing that and a real catch statment needs to be wrapped around a wait call.
-		public static Task OnFaulted(this Task target, Action<Exception> action)
+		/// <summary>
+		/// Utility method that can be chained with other methods for reacting to Task results. Only invokes the action if faulted.
+		/// </summary>
+		/// <typeparam name="TTask">The return type is the same as the target.</typeparam>
+		/// <param name="action">The action to perform if faulted.</param>
+		/// <returns>The target object.  Allows for method chaining.</returns>
+		public static TTask OnFaulted<TTask>(this TTask target, Action<Exception> action)
+			where TTask : Task
 		{
-			return target.ContinueWith(task =>
+			target.ContinueWith(task =>
 			{
 				if (task.IsFaulted) action(task.Exception);
 			});
+
+			return target;
 		}
 
-		public static Task<T> OnFaulted<T>(this Task<T> target, Action<Exception> action)
+
+		/// <summary>
+		/// Utility method that can be chained with other methods for reacting to Task results.  Only invokes the action if cancelled.
+		/// </summary>
+		/// <typeparam name="TTask">The return type is the same as the target.</typeparam>
+		/// <param name="action">The action to perform if cancelled.</param>
+		/// <returns>The target object.  Allows for method chaining.</returns>
+		public static TTask OnCancelled<TTask>(this TTask target, Action action)
+			where TTask : Task
 		{
-			return target.ContinueWith(task =>
+			target.ContinueWith(task =>
 			{
-				if (task.IsFaulted) action(task.Exception);
-				return task.Result;
+				if (!task.IsCanceled) action();
 			});
+
+			return target;
 		}
 
-		public static Task OnCancelled(this Task target, Action action)
+		/// <summary>
+		/// Utility method that can be chained with other methods for reacting to Task results.  Only invokes the action if cancelled.
+		/// </summary>
+		/// <typeparam name="TTask">The return type is the same as the target.</typeparam>
+		/// <param name="action">The action to perform if cancelled.</param>
+		/// <returns>The target object.  Allows for method chaining.</returns>
+		public static TTask OnCancelled<TTask, T>(this TTask target, Func<T> action)
+			where TTask : Task
 		{
-			return target.ContinueWith(task =>
+			target.ContinueWith(task =>
 			{
-				if (task.IsCanceled) action();
+				if (!task.IsCanceled) action();
 			});
-		}
 
-		public static Task<T> OnCancelled<T>(this Task<T> target, Action action)
-		{
-			return target.ContinueWith(task =>
-			{
-				if (task.IsCanceled) action();
-				return task.Result;
-			});
-		}
-
-		public static Task OnCancelled<T>(this Task target, Func<T> action)
-		{
-			return target.ContinueWith(task =>
-			{
-				if (task.IsCanceled) action();
-			});
+			return target;
 		}
 
 	}

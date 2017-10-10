@@ -94,7 +94,7 @@ namespace Open.Threading
 				{
 					cancellable.ContinueWith(t => cancellable.Cancel()); // If this is arbitrarily run before the delay, then cancel the delay.
 					Delay(delay, token)
-						.OnFullfilled(() => cancellable.Start(scheduler));
+						.OnFullfilled(() => cancellable.EnsureStarted(scheduler));
 				}
 			}
 
