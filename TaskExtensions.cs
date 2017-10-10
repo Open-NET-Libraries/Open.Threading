@@ -72,7 +72,7 @@ namespace Open.Threading
 		{
 			target.ContinueWith(task =>
 			{
-				if (task.IsCompleted && !task.IsCanceled) action();
+				if (task.Status == TaskStatus.RanToCompletion) action();
 			});
 
 			return target;
@@ -89,7 +89,7 @@ namespace Open.Threading
 		{
 			target.ContinueWith(task =>
 			{
-				if (task.IsCompleted && !task.IsCanceled) action();
+				if (task.Status == TaskStatus.RanToCompletion) action();
 			});
 
 			return target;
