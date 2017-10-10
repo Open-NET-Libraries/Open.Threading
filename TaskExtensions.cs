@@ -37,6 +37,13 @@ namespace Open.Threading
 			});
 		}
 
+		public static Task OnFullfilled<T>(this Task target, Func<T> action)
+		{
+			return target.ContinueWith(task =>
+			{
+				if (task.IsCompleted) action();
+			});
+		}
 
 		public static Task<T> OnFullfilled<T>(this Task<T> target, Action<T> action)
 		{
@@ -82,6 +89,13 @@ namespace Open.Threading
 			});
 		}
 
+		public static Task OnCancelled<T>(this Task target, Func<T> action)
+		{
+			return target.ContinueWith(task =>
+			{
+				if (task.IsCanceled) action();
+			});
+		}
 
 	}
 }

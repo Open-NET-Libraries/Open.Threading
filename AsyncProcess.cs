@@ -34,6 +34,12 @@ namespace Open.Threading
 			protected set;
 		}
 
+		public Exception LastFault
+		{
+			get;
+			protected set;
+		}
+
 		protected AsyncProcess(TaskScheduler scheduler = null)
 			: base()
 		{
@@ -70,10 +76,11 @@ namespace Open.Threading
 			{
 				//Contract.Assert(Interlocked.Increment(ref _processCount) == 1);
 				Closure(p);
-			}
-			catch
-			{
 				SyncLock.Write(() => LatestCompleted = DateTime.Now);
+			}
+			catch(Exception ex)
+			{
+				SyncLock.Write(() => LastFault = ex);
 			}
 			finally
 			{
@@ -92,7 +99,7 @@ namespace Open.Threading
 							|| timeAllowedBeforeRefresh.Value < DateTime.Now - LatestCompleted); // Or later?
 				}, () => {
 
-					task = new Task((Action<object>)Process, new T());
+					task = new Task(Process, new T());
 					task.Start(Scheduler);
 					InternalTask = task;
 					Count++;
@@ -116,9 +123,9 @@ namespace Open.Threading
 			}
 		}
 
-		public void Wait()
+		public void Wait(bool once = true)
 		{
-			EnsureActive(true);
+			EnsureActive(once);
             InternalTask?.Wait();
 		}
 
