@@ -84,6 +84,22 @@ namespace Open.Threading
 		/// <typeparam name="TTask">The return type is the same as the target.</typeparam>
 		/// <param name="action">The action to perform if fullfulled.</param>
 		/// <returns>The target object.  Allows for method chaining.</returns>
+		public static Task<T> OnFullfilled<T>(this Task<T> target, Action<T> action)
+		{
+			target.ContinueWith(task =>
+			{
+				if (task.Status == TaskStatus.RanToCompletion) action(task.Result);
+			});
+
+			return target;
+		}
+
+		/// <summary>
+		/// Utility method that can be chained with other methods for reacting to Task results.  Only invokes the action if completed and not cancelled.
+		/// </summary>
+		/// <typeparam name="TTask">The return type is the same as the target.</typeparam>
+		/// <param name="action">The action to perform if fullfulled.</param>
+		/// <returns>The target object.  Allows for method chaining.</returns>
 		public static TTask OnFullfilled<TTask,T>(this TTask target, Func<T> action)
 			where TTask : Task
 		{
