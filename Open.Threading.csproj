@@ -32,8 +32,8 @@ Part of the "Open" set of libraries.</Description>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Open.Diagnostics" Version="1.0.1" />
-    <PackageReference Include="Open.Threading.ReadWrite" Version="1.0.1" />
+    <PackageReference Include="Open.Diagnostics" Version="1.2.0" />
+    <PackageReference Include="Open.Threading.ReadWrite" Version="1.0.3" />
   </ItemGroup>
 
 </Project>
