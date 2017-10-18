@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace Open.Threading
+namespace Open.Threading.Tasks
 {
     public class AsyncQuery<TResult> : AsyncProcess
 	{
@@ -169,8 +169,7 @@ namespace Open.Threading
 		{
 			get
 			{
-				DateTime completed;
-				return GetLatestOrRunning(out completed);
+				return GetLatestOrRunning(out DateTime completed);
 			}
 		}
 
@@ -227,8 +226,7 @@ namespace Open.Threading
 
 		public virtual bool TryGetLatest(out TResult latest)
 		{
-			DateTime completed;
-			return TryGetLatest(out latest, out completed);
+			return TryGetLatest(out latest, out DateTime completed);
 		}
 
 		public virtual bool TryGetLatestOrStart(out TResult latest, out DateTime completed)
@@ -241,15 +239,12 @@ namespace Open.Threading
 
 		public virtual bool TryGetLatestOrStart(out TResult latest)
 		{
-			DateTime completed;
-			return TryGetLatestOrStart(out latest, out completed);
+			return TryGetLatestOrStart(out latest, out DateTime completed);
 		}
 
 		public virtual bool TryGetLatestOrStart()
 		{
-			TResult latest;
-			DateTime completed;
-			return TryGetLatestOrStart(out latest, out completed);
+			return TryGetLatestOrStart(out TResult latest, out DateTime completed);
 		}
 
 
@@ -274,8 +269,7 @@ namespace Open.Threading
 
 		public TResult GetLatestOrRunning(out DateTime completed)
 		{
-			TResult result;
-			if (!TryGetLatest(out result, out completed))
+			if (!TryGetLatest(out TResult result, out completed))
 			{
 				result = RunningValue;
 				completed = DateTime.Now;

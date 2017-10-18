@@ -1088,7 +1088,7 @@ namespace Open.Threading
 			}
 
 			/// <summary>
-			/// Manages registering a ReaderWriterLockSlim an synchronizing the provided query write access.
+			/// Manages registering a ReaderWriterLockSlim and synchronizing the provided query write access.
 			/// </summary>
 			public static T WriteTo<T>(string path, Func<T> closure,
 				int? millisecondsTimeout = null)
@@ -1099,7 +1099,7 @@ namespace Open.Threading
 			}
 
 			/// <summary>
-			/// Manages registering a ReaderWriterLockSlim an synchronizing the provided query read access.
+			/// Manages registering a ReaderWriterLockSlim and synchronizing the provided query read access.
 			/// </summary>
 			public static bool ReadFrom(string path, Action closure,
 				int? millisecondsTimeout = null, bool throwsOnTimeout = false)
@@ -1110,7 +1110,7 @@ namespace Open.Threading
 			}
 
 			/// <summary>
-			/// Manages registering a ReaderWriterLockSlim an synchronizing the provided query read access.
+			/// Manages registering a ReaderWriterLockSlim and synchronizing the provided query read access.
 			/// </summary>
 			public static bool ReadFromUpgradeable(
 				string path, Action closure,
@@ -1122,7 +1122,7 @@ namespace Open.Threading
 			}
 
 			/// <summary>
-			/// Manages registering a ReaderWriterLockSlim an synchronizing the provided query read access.
+			/// Manages registering a ReaderWriterLockSlim and synchronizing the provided query read access.
 			/// </summary>
 			public static bool ReadFromUpgradeable<T>(
 				out T result, string path, Func<T> closure,
