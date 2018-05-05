@@ -5,7 +5,8 @@ namespace Open.Threading
 {
 	public class Progress
 	{
-		public Progress() {
+		public Progress()
+		{
 			Index = 0;
 			Count = 0;
 
@@ -66,8 +67,8 @@ namespace Open.Threading
 
 		public void Run(Action closure, bool propagateException = false)
 		{
-			if(closure==null)
-				throw new ArgumentNullException("closure");
+			if (closure == null)
+				throw new ArgumentNullException(nameof(closure));
 
 			Start();
 			try
@@ -85,8 +86,8 @@ namespace Open.Threading
 
 		public T Execute<T>(Func<T> query, bool propagateException = false)
 		{
-			if(query==null)
-				throw new ArgumentNullException("query");
+			if (query == null)
+				throw new ArgumentNullException(nameof(query));
 
 			Start();
 			try
@@ -95,7 +96,7 @@ namespace Open.Threading
 				Finish();
 				return result;
 			}
-			catch(Exception ex)
+			catch (Exception ex)
 			{
 				Failed(ex.ToString());
 				if (propagateException)
@@ -127,7 +128,7 @@ namespace Open.Threading
 				if (Count == 0)
 					return 0; // Signify it hasn'T started.
 
-				return (double) Index / Count;
+				return (double)Index / Count;
 			}
 		}
 
@@ -145,9 +146,9 @@ namespace Open.Threading
 
 		public void Failed(Exception ex)
 		{
-			if(ex==null)
-				throw new ArgumentNullException("ex");
-			
+			if (ex == null)
+				throw new ArgumentNullException(nameof(ex));
+
 			Failed(ex.ToString());
 		}
 
@@ -188,7 +189,7 @@ namespace Open.Threading
 		{
 			get
 			{
-				if(Index==0 || Count==0)
+				if (Index == 0 || Count == 0)
 					return TimeSpan.MaxValue;
 
 				var remaining = Count - Index;
@@ -205,7 +206,7 @@ namespace Open.Threading
 		{
 			get
 			{
-                return EstimatedTimeLeft.ToString();//.ToStringVerbose();
+				return EstimatedTimeLeft.ToString();//.ToStringVerbose();
 			}
 		}
 

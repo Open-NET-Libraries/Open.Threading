@@ -1,7 +1,8 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using Open.Disposable;
+using System;
+using System.Diagnostics.Contracts;
 using System.Threading;
-using Open.Disposable;
+using System.Threading.Tasks;
 
 namespace Open.Threading
 {
@@ -68,8 +69,9 @@ namespace Open.Threading
 		//long _processCount = 0;
 		protected virtual void Process(object progress)
 		{
-			if(progress==null)
-				throw new ArgumentNullException("progress");
+			if (progress == null)
+				throw new ArgumentNullException(nameof(progress));
+			Contract.EndContractBlock();
 
 			var p = (T)progress;
 			try
@@ -78,7 +80,7 @@ namespace Open.Threading
 				Closure(p);
 				SyncLock.Write(() => LatestCompleted = DateTime.Now);
 			}
-			catch(Exception ex)
+			catch (Exception ex)
 			{
 				SyncLock.Write(() => LastFault = ex);
 			}
@@ -92,18 +94,20 @@ namespace Open.Threading
 		{
 			Task task = null;
 			SyncLock.ReadWriteConditionalOptimized(
-				write=>{
+				write =>
+				{
 					task = InternalTask;
 					return (task == null || !once && !task.IsActive()) // No action, or completed?
 						&& (!timeAllowedBeforeRefresh.HasValue // Now?
 							|| timeAllowedBeforeRefresh.Value < DateTime.Now - LatestCompleted); // Or later?
-				}, () => {
+				}, () =>
+				{
 
 					task = new Task(Process, new T());
 					task.Start(Scheduler);
 					InternalTask = task;
 					Count++;
-					
+
 				}
 			);
 
@@ -126,7 +130,7 @@ namespace Open.Threading
 		public void Wait(bool once = true)
 		{
 			EnsureActive(once);
-            InternalTask?.Wait();
+			InternalTask?.Wait();
 		}
 
 		public bool EnsureActive(bool once = false)

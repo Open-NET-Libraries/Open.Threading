@@ -3,15 +3,16 @@
  * Licensing: MIT https://github.com/electricessence/Open/blob/dotnet-core/LICENSE.md
  */
 
+using Open.Diagnostics;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Open.Diagnostics;
 
 
 namespace Open.Threading
@@ -44,18 +45,18 @@ namespace Open.Threading
 		internal static void ValidateSyncObject(object syncObject)
 		{
 			if (syncObject == null)
-				throw new ArgumentNullException("syncObject");
+				throw new ArgumentNullException(nameof(syncObject));
 			if (!IsValidSyncObject(syncObject))
-				throw new ArgumentException("syncObject");
+				throw new ArgumentException(nameof(syncObject));
 		}
 
-        internal static void ValidateMillisecondsTimeout(int? millisecondsTimeout)
-        {
-            if ((millisecondsTimeout ?? 0) < 0)
-                throw new ArgumentOutOfRangeException("millisecondsTimeout", millisecondsTimeout, "Cannot be a negative value.");
-        }
+		internal static void ValidateMillisecondsTimeout(int? millisecondsTimeout)
+		{
+			if ((millisecondsTimeout ?? 0) < 0)
+				throw new ArgumentOutOfRangeException(nameof(millisecondsTimeout), millisecondsTimeout, "Cannot be a negative value.");
+		}
 
-        public static bool InterlockedExchangeIfLessThanComparison(ref int location, int comparison, int newValue)
+		public static bool InterlockedExchangeIfLessThanComparison(ref int location, int comparison, int newValue)
 		{
 			int initialValue;
 			do
@@ -88,7 +89,8 @@ namespace Open.Threading
 		{
 			ValidateSyncObject(syncObject);
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
+			Contract.EndContractBlock();
 
 			lock (syncObject)
 				closure();
@@ -103,7 +105,8 @@ namespace Open.Threading
 		{
 			ValidateSyncObject(syncObject);
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
+			Contract.EndContractBlock();
 
 			lock (syncObject)
 				return closure();
@@ -127,9 +130,10 @@ namespace Open.Threading
 		{
 			ValidateSyncObject(syncObject);
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			if (millisecondsTimeout < 0)
-				throw new ArgumentOutOfRangeException("closure", millisecondsTimeout, "Cannot be a negative value.");
+				throw new ArgumentOutOfRangeException(nameof(closure), millisecondsTimeout, "Cannot be a negative value.");
+			Contract.EndContractBlock();
 
 			bool lockTaken = false;
 			try
@@ -168,9 +172,10 @@ namespace Open.Threading
 		{
 			ValidateSyncObject(syncObject);
 			if (condition == null)
-				throw new ArgumentNullException("condition");
+				throw new ArgumentNullException(nameof(condition));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
+			Contract.EndContractBlock();
 
 			if (condition(false))
 				lock (syncObject)
@@ -193,9 +198,10 @@ namespace Open.Threading
 		{
 			ValidateSyncObject(syncObject);
 			if (condition == null)
-				throw new ArgumentNullException("condition");
+				throw new ArgumentNullException(nameof(condition));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
+			Contract.EndContractBlock();
 
 			if (condition())
 				lock (syncObject)
@@ -224,10 +230,11 @@ namespace Open.Threading
 		{
 			ValidateSyncObject(syncObject);
 			if (condition == null)
-				throw new ArgumentNullException("condition");
+				throw new ArgumentNullException(nameof(condition));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
+			Contract.EndContractBlock();
 
 			if (condition(false))
 			{
@@ -274,10 +281,11 @@ namespace Open.Threading
 		{
 			ValidateSyncObject(syncObject);
 			if (condition == null)
-				throw new ArgumentNullException("condition");
+				throw new ArgumentNullException(nameof(condition));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
+			Contract.EndContractBlock();
 
 			return LockConditional(syncObject, (locked) => condition(), closure, millisecondsTimeout, throwsOnTimeout);
 		}
@@ -291,7 +299,8 @@ namespace Open.Threading
 		{
 			ValidateSyncObject(syncObject);
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
+			Contract.EndContractBlock();
 
 			if (target == null)
 				lock (syncObject)
@@ -300,16 +309,16 @@ namespace Open.Threading
 			return target;
 		}
 
-        /// <summary>
-        /// Guarantees only a single execution occurs instead of a optimistic concurrency.
-        /// 
-        /// Ensures not only thread safety but also only a single operation.
-        /// </summary>
-        /// <typeparam name="T">The type of the value.</typeparam>
-        /// <param name="lazy">The Lazy instance to initialize.</param>
-        /// <param name="factory">The value generator.</param>
-        /// <returns>The generated value.</returns>
-        public static T InitializeValue<T>(ref Lazy<T> lazy, Func<T> factory)
+		/// <summary>
+		/// Guarantees only a single execution occurs instead of a optimistic concurrency.
+		/// 
+		/// Ensures not only thread safety but also only a single operation.
+		/// </summary>
+		/// <typeparam name="T">The type of the value.</typeparam>
+		/// <param name="lazy">The Lazy instance to initialize.</param>
+		/// <param name="factory">The value generator.</param>
+		/// <returns>The generated value.</returns>
+		public static T InitializeValue<T>(ref Lazy<T> lazy, Func<T> factory)
 		{
 			LazyInitializer.EnsureInitialized(ref lazy, () => new Lazy<T>(factory, LazyThreadSafetyMode.ExecutionAndPublication));
 			return lazy.Value;
@@ -321,25 +330,26 @@ namespace Open.Threading
 		private static ReadWriteHelper<object> GetReadWriteHelper(object key)
 		{
 			if (key == null)
-				throw new ArgumentNullException("key");
+				throw new ArgumentNullException(nameof(key));
+			Contract.EndContractBlock();
 			var result = _sychronizeReadWriteRegistry.GetOrCreateValue(key);
 			if (result == null)
 				throw new NullReferenceException();
 			return result;
 		}
 
-        /// <summary>
-        /// Manages a read-only conditional operation and resultant write locked operation of any target and specifc key of that object.
-        /// </summary>
-        /// <typeparam name="TSync">Type of the object sync context.</typeparam>
-        /// <param name="syncObject">The main object that defines the synchronization context.</param>
-        /// <param name="key">The key that represents what value will change.</param>
-        /// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
-        /// <param name="closure">The function to execute while under a write lock if the condition remains true.</param>
-        /// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
-        /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
-        /// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
-        /// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
+		/// <summary>
+		/// Manages a read-only conditional operation and resultant write locked operation of any target and specifc key of that object.
+		/// </summary>
+		/// <typeparam name="TSync">Type of the object sync context.</typeparam>
+		/// <param name="syncObject">The main object that defines the synchronization context.</param>
+		/// <param name="key">The key that represents what value will change.</param>
+		/// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
+		/// <param name="closure">The function to execute while under a write lock if the condition remains true.</param>
+		/// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
+		/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+		/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
+		/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
 		public static bool SynchronizeReadWrite<TSync>(
 			TSync syncObject,
 			object key, Func<LockType, bool> condition, Action closure,
@@ -347,12 +357,13 @@ namespace Open.Threading
 		{
 			ValidateSyncObject(syncObject);
 			if (key == null)
-				throw new ArgumentNullException("key");
+				throw new ArgumentNullException(nameof(key));
 			if (condition == null)
-				throw new ArgumentNullException("condition");
+				throw new ArgumentNullException(nameof(condition));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
+			Contract.EndContractBlock();
 
 			return GetReadWriteHelper(syncObject)
 					.ReadWriteConditionalOptimized(key,
@@ -361,33 +372,34 @@ namespace Open.Threading
 		}
 
 
-        /// <summary>
-        /// Manages a read-only conditional operation and resultant write locked operation of any target and specifc key of that object.
-        /// </summary>
-        /// <typeparam name="TSync">Type of the object sync context.</typeparam>
-        /// <typeparam name="T">Type of the result.</typeparam>
-        /// <param name="syncObject">The main object that defines the synchronization context.</param>
-        /// <param name="key">The key that represents what value will change.</param>
-        /// <param name="result">The reference to become the result if a result is acquired from the closure during write.</param>
-        /// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
-        /// <param name="closure">The function to execute while under a write lock if the condition remains true.  'result' becomes the return value.</param>
-        /// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
-        /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
-        /// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
-        /// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-        public static bool SynchronizeReadWrite<TSync, T>(
+		/// <summary>
+		/// Manages a read-only conditional operation and resultant write locked operation of any target and specifc key of that object.
+		/// </summary>
+		/// <typeparam name="TSync">Type of the object sync context.</typeparam>
+		/// <typeparam name="T">Type of the result.</typeparam>
+		/// <param name="syncObject">The main object that defines the synchronization context.</param>
+		/// <param name="key">The key that represents what value will change.</param>
+		/// <param name="result">The reference to become the result if a result is acquired from the closure during write.</param>
+		/// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
+		/// <param name="closure">The function to execute while under a write lock if the condition remains true.  'result' becomes the return value.</param>
+		/// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
+		/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+		/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
+		/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
+		public static bool SynchronizeReadWrite<TSync, T>(
 			TSync syncObject,
 			object key, ref T result, Func<LockType, bool> condition, Func<T> closure,
 			int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
 			if (key == null)
-				throw new ArgumentNullException("key");
+				throw new ArgumentNullException(nameof(key));
 			if (condition == null)
-				throw new ArgumentNullException("condition");
+				throw new ArgumentNullException(nameof(condition));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
+			Contract.EndContractBlock();
 
 			return GetReadWriteHelper(syncObject)
 					.ReadWriteConditionalOptimized(key, ref result,
@@ -395,34 +407,35 @@ namespace Open.Threading
 
 		}
 
-        /// <summary>
-        /// Manages a read-only conditional operation and resultant write locked operation of any target and specifc key of that object.
-        /// 
-        /// A bit more robust (but heavier) version that first synchronizes a read-lock on the syncObject before testing the condition.
-        /// Subsequently will use a write lock on the syncObject while already having a write lock on the key.
-        /// </summary>
-        /// <typeparam name="TSync">Type of the object sync context.</typeparam>
-        /// <param name="syncObject">The main object that defines the synchronization context.</param>
-        /// <param name="key">The key that represents what value will change.</param>
-        /// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
-        /// <param name="closure">The function to execute while under a write lock if the condition remains true.</param>
-        /// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
-        /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
-        /// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
-        /// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-        public static bool SynchronizeReadWriteKeyAndObject<TSync>(
+		/// <summary>
+		/// Manages a read-only conditional operation and resultant write locked operation of any target and specifc key of that object.
+		/// 
+		/// A bit more robust (but heavier) version that first synchronizes a read-lock on the syncObject before testing the condition.
+		/// Subsequently will use a write lock on the syncObject while already having a write lock on the key.
+		/// </summary>
+		/// <typeparam name="TSync">Type of the object sync context.</typeparam>
+		/// <param name="syncObject">The main object that defines the synchronization context.</param>
+		/// <param name="key">The key that represents what value will change.</param>
+		/// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
+		/// <param name="closure">The function to execute while under a write lock if the condition remains true.</param>
+		/// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
+		/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+		/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
+		/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
+		public static bool SynchronizeReadWriteKeyAndObject<TSync>(
 			TSync syncObject,
 			object key, Func<LockType, bool> condition, Action closure,
 			int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
 			if (key == null)
-				throw new ArgumentNullException("key");
+				throw new ArgumentNullException(nameof(key));
 			if (condition == null)
-				throw new ArgumentNullException("condition");
+				throw new ArgumentNullException(nameof(condition));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
+			Contract.EndContractBlock();
 
 			return SynchronizeReadWrite(syncObject, key,
 				lockType => SynchronizeRead(syncObject, () => condition(LockType.Read), millisecondsTimeout, throwsOnTimeout),
@@ -431,36 +444,37 @@ namespace Open.Threading
 				throwsOnTimeout);
 		}
 
-        /// <summary>
-        /// Manages a read-only conditional operation and resultant write locked operation of any target and specifc key of that object.
-        /// 
-        /// A bit more robust (but heavier) version that first synchronizes a read-lock on the syncObject before testing the condition.
-        /// Subsequently will use a write lock on the syncObject while already having a write lock on the key.
-        /// </summary>
-        /// <typeparam name="TSync">Type of the object sync context.</typeparam>
-        /// <typeparam name="T">Type of the result.</typeparam>
-        /// <param name="syncObject">The main object that defines the synchronization context.</param>
-        /// <param name="key">The key that represents what value will change.</param>
-        /// <param name="result">The reference to become the result if a result is acquired from the closure during write.</param>
-        /// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
-        /// <param name="closure">The function to execute while under a write lock if the condition remains true.  'result' becomes the return value.</param>
-        /// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
-        /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
-        /// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
-        /// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-        public static bool SynchronizeReadWriteKeyAndObject<TSync, T>(
+		/// <summary>
+		/// Manages a read-only conditional operation and resultant write locked operation of any target and specifc key of that object.
+		/// 
+		/// A bit more robust (but heavier) version that first synchronizes a read-lock on the syncObject before testing the condition.
+		/// Subsequently will use a write lock on the syncObject while already having a write lock on the key.
+		/// </summary>
+		/// <typeparam name="TSync">Type of the object sync context.</typeparam>
+		/// <typeparam name="T">Type of the result.</typeparam>
+		/// <param name="syncObject">The main object that defines the synchronization context.</param>
+		/// <param name="key">The key that represents what value will change.</param>
+		/// <param name="result">The reference to become the result if a result is acquired from the closure during write.</param>
+		/// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
+		/// <param name="closure">The function to execute while under a write lock if the condition remains true.  'result' becomes the return value.</param>
+		/// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
+		/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+		/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
+		/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
+		public static bool SynchronizeReadWriteKeyAndObject<TSync, T>(
 			TSync syncObject,
 			object key, ref T result, Func<LockType, bool> condition, Func<T> closure,
 			int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
 			if (key == null)
-				throw new ArgumentNullException("key");
+				throw new ArgumentNullException(nameof(key));
 			if (condition == null)
-				throw new ArgumentNullException("condition");
+				throw new ArgumentNullException(nameof(condition));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
+			Contract.EndContractBlock();
 
 
 			var r = result;
@@ -479,210 +493,218 @@ namespace Open.Threading
 			return synced;
 		}
 
-        /// <summary>
-        /// Manages a read-only conditional operation and resultant write locked operation of any target.
-        /// </summary>
-        /// <typeparam name="TSync">Type of the object sync context.</typeparam>
-        /// <param name="syncObject">The main object that defines the synchronization context.</param>
-        /// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
-        /// <param name="closure">The function to execute while under a write lock if the condition remains true.</param>
-        /// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
-        /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
-        /// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
-        /// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-        public static bool SynchronizeReadWrite<TSync>(
+		/// <summary>
+		/// Manages a read-only conditional operation and resultant write locked operation of any target.
+		/// </summary>
+		/// <typeparam name="TSync">Type of the object sync context.</typeparam>
+		/// <param name="syncObject">The main object that defines the synchronization context.</param>
+		/// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
+		/// <param name="closure">The function to execute while under a write lock if the condition remains true.</param>
+		/// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
+		/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+		/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
+		/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
+		public static bool SynchronizeReadWrite<TSync>(
 			TSync syncObject,
 			Func<LockType, bool> condition, Action closure,
 			int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
 			if (condition == null)
-				throw new ArgumentNullException("condition");
+				throw new ArgumentNullException(nameof(condition));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
+			Contract.EndContractBlock();
 
 			return SynchronizeReadWrite(syncObject, syncObject, condition, closure, millisecondsTimeout, throwsOnTimeout);
 		}
 
-        /// <summary>
-        /// Manages a read-only conditional operation and resultant write locked operation of any target.
-        /// </summary>
-        /// <typeparam name="TSync">Type of the object sync context.</typeparam>
-        /// <typeparam name="T">Type of the result.</typeparam>
-        /// <param name="syncObject">The main object that defines the synchronization context.</param>
-        /// <param name="result">The reference to become the result if a result is acquired from the closure during write.</param>
-        /// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
-        /// <param name="closure">The function to execute while under a write lock if the condition remains true.  'result' becomes the return value.</param>
-        /// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
-        /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
-        /// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
-        /// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-        public static bool SynchronizeReadWrite<TSync, T>(
+		/// <summary>
+		/// Manages a read-only conditional operation and resultant write locked operation of any target.
+		/// </summary>
+		/// <typeparam name="TSync">Type of the object sync context.</typeparam>
+		/// <typeparam name="T">Type of the result.</typeparam>
+		/// <param name="syncObject">The main object that defines the synchronization context.</param>
+		/// <param name="result">The reference to become the result if a result is acquired from the closure during write.</param>
+		/// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
+		/// <param name="closure">The function to execute while under a write lock if the condition remains true.  'result' becomes the return value.</param>
+		/// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
+		/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+		/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
+		/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
+		public static bool SynchronizeReadWrite<TSync, T>(
 			TSync syncObject,
 			ref T result, Func<LockType, bool> condition, Func<T> closure,
 			int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
 			if (condition == null)
-				throw new ArgumentNullException("condition");
+				throw new ArgumentNullException(nameof(condition));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
+			Contract.EndContractBlock();
 
 			return SynchronizeReadWrite(syncObject, syncObject, ref result, condition, closure, millisecondsTimeout, throwsOnTimeout);
 		}
 
-        /// <summary>
-        /// Manages a read-only operation of any target and the provided key and returns the value from the closure.
-        /// </summary>
-        /// <typeparam name="TSync">Type of the object sync context.</typeparam>
-        /// <typeparam name="T">Type of the result.</typeparam>
-        /// <param name="syncObject">The main object that defines the synchronization context.</param>
-        /// <param name="key">The key that represents what value being read from.</param>
-        /// <param name="closure">The function to execute while under a read lock.</param>
-        /// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
-        /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
-        /// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
-        /// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-        public static T SynchronizeRead<TSync, T>(TSync syncObject, object key, Func<T> closure, int? millisecondsTimeout = null) where TSync : class
+		/// <summary>
+		/// Manages a read-only operation of any target and the provided key and returns the value from the closure.
+		/// </summary>
+		/// <typeparam name="TSync">Type of the object sync context.</typeparam>
+		/// <typeparam name="T">Type of the result.</typeparam>
+		/// <param name="syncObject">The main object that defines the synchronization context.</param>
+		/// <param name="key">The key that represents what value being read from.</param>
+		/// <param name="closure">The function to execute while under a read lock.</param>
+		/// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
+		/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+		/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
+		/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
+		public static T SynchronizeRead<TSync, T>(TSync syncObject, object key, Func<T> closure, int? millisecondsTimeout = null) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
 			if (key == null)
-				throw new ArgumentNullException("key");
+				throw new ArgumentNullException(nameof(key));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
+			Contract.EndContractBlock();
 
 			return GetReadWriteHelper(syncObject)
 				.ReadValue(key,
 					closure, millisecondsTimeout);
 		}
 
-        /// <summary>
-        /// Manages a read-only operation of any target and returns the value from the closure.
-        /// </summary>
-        /// <typeparam name="TSync">Type of the object sync context.</typeparam>
-        /// <typeparam name="T">Type of the result.</typeparam>
-        /// <param name="syncObject">The main object that defines the synchronization context.</param>
-        /// <param name="closure">The function to execute while under a read lock.</param>
-        /// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
-        /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
-        /// <returns>The value from the closure.</returns>
-        /// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-        public static T SynchronizeRead<TSync, T>(TSync syncObject, Func<T> closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
+		/// <summary>
+		/// Manages a read-only operation of any target and returns the value from the closure.
+		/// </summary>
+		/// <typeparam name="TSync">Type of the object sync context.</typeparam>
+		/// <typeparam name="T">Type of the result.</typeparam>
+		/// <param name="syncObject">The main object that defines the synchronization context.</param>
+		/// <param name="closure">The function to execute while under a read lock.</param>
+		/// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
+		/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+		/// <returns>The value from the closure.</returns>
+		/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
+		public static T SynchronizeRead<TSync, T>(TSync syncObject, Func<T> closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
+			Contract.EndContractBlock();
 
 			return SynchronizeRead(syncObject, syncObject, closure, millisecondsTimeout);
 		}
 
-        /// <summary>
-        /// Manages a read-only operation of any target and the provided key.
-        /// </summary>
-        /// <typeparam name="TSync">Type of the object sync context.</typeparam>
-        /// <typeparam name="T">Type of the result.</typeparam>
-        /// <param name="syncObject">The main object that defines the synchronization context.</param>
-        /// <param name="key">The key that represents what value being read from.</param>
-        /// <param name="closure">The function to execute while under a read lock.</param>
-        /// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
-        /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
-        /// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
-        /// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-        public static bool SynchronizeRead<TSync>(TSync syncObject, object key, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
+		/// <summary>
+		/// Manages a read-only operation of any target and the provided key.
+		/// </summary>
+		/// <typeparam name="TSync">Type of the object sync context.</typeparam>
+		/// <typeparam name="T">Type of the result.</typeparam>
+		/// <param name="syncObject">The main object that defines the synchronization context.</param>
+		/// <param name="key">The key that represents what value being read from.</param>
+		/// <param name="closure">The function to execute while under a read lock.</param>
+		/// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
+		/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+		/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
+		/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
+		public static bool SynchronizeRead<TSync>(TSync syncObject, object key, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
 			if (key == null)
-				throw new ArgumentNullException("key");
+				throw new ArgumentNullException(nameof(key));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
-
+			Contract.EndContractBlock();
 
 			return GetReadWriteHelper(syncObject)
 				.Read(key,
 					closure, millisecondsTimeout, throwsOnTimeout);
 		}
 
-        /// <summary>
-        /// Manages a read-only operation of any target.
-        /// </summary>
-        /// <typeparam name="TSync">Type of the object sync context.</typeparam>
-        /// <param name="syncObject">The main object that defines the synchronization context.</param>
-        /// <param name="closure">The function to execute while under a read lock.</param>
-        /// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
-        /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
-        /// <returns>The value from the closure.</returns>
-        /// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-        public static bool SynchronizeRead<TSync>(TSync syncObject, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
+		/// <summary>
+		/// Manages a read-only operation of any target.
+		/// </summary>
+		/// <typeparam name="TSync">Type of the object sync context.</typeparam>
+		/// <param name="syncObject">The main object that defines the synchronization context.</param>
+		/// <param name="closure">The function to execute while under a read lock.</param>
+		/// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
+		/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+		/// <returns>The value from the closure.</returns>
+		/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
+		public static bool SynchronizeRead<TSync>(TSync syncObject, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
+			Contract.EndContractBlock();
 
 			return SynchronizeRead(syncObject, syncObject, closure, millisecondsTimeout, throwsOnTimeout);
 		}
 
-        /// <summary>
-        /// Manages a write lock operation of any target and the provided key.
-        /// </summary>
-        /// <typeparam name="TSync">Type of the object sync context.</typeparam>
-        /// <param name="syncObject">The main object that defines the synchronization context.</param>
-        /// <param name="key">The key that represents what value being written to.</param>
-        /// <param name="closure">The function to execute while under a write lock.</param>
-        /// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
-        /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
-        /// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
-        /// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-        public static bool SynchronizeWrite<TSync>(TSync syncObject, object key, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
+		/// <summary>
+		/// Manages a write lock operation of any target and the provided key.
+		/// </summary>
+		/// <typeparam name="TSync">Type of the object sync context.</typeparam>
+		/// <param name="syncObject">The main object that defines the synchronization context.</param>
+		/// <param name="key">The key that represents what value being written to.</param>
+		/// <param name="closure">The function to execute while under a write lock.</param>
+		/// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
+		/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+		/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
+		/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
+		public static bool SynchronizeWrite<TSync>(TSync syncObject, object key, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
 			if (key == null)
-				throw new ArgumentNullException("key");
+				throw new ArgumentNullException(nameof(key));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
+			Contract.EndContractBlock();
 
 			return GetReadWriteHelper(syncObject)
 				.Write(key,
 					closure, millisecondsTimeout, throwsOnTimeout);
 		}
 
-        /// <summary>
-        /// Manages a write lock operation of any target.
-        /// </summary>
-        /// <typeparam name="TSync">Type of the object sync context.</typeparam>
-        /// <param name="syncObject">The main object that defines the synchronization context.</param>
-        /// <param name="closure">The function to execute while under a write lock.</param>
-        /// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
-        /// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
-        /// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
-        /// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-        public static bool SynchronizeWrite<TSync>(TSync syncObject, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
+		/// <summary>
+		/// Manages a write lock operation of any target.
+		/// </summary>
+		/// <typeparam name="TSync">Type of the object sync context.</typeparam>
+		/// <param name="syncObject">The main object that defines the synchronization context.</param>
+		/// <param name="closure">The function to execute while under a write lock.</param>
+		/// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
+		/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+		/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
+		/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
+		public static bool SynchronizeWrite<TSync>(TSync syncObject, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
+			Contract.EndContractBlock();
 
 			return SynchronizeWrite(syncObject, syncObject, closure, millisecondsTimeout, throwsOnTimeout);
 		}
 
-        /// <summary>
-        /// Excutes an action within the context of a a Semaphore.
-        /// </summary>
-        /// <param name="target">The semaphore instance</param>
-        /// <param name="closure">The action to execute.</param>
+		/// <summary>
+		/// Excutes an action within the context of a a Semaphore.
+		/// </summary>
+		/// <param name="target">The semaphore instance</param>
+		/// <param name="closure">The action to execute.</param>
 		public static void Execute(this Semaphore target, Action closure)
 		{
 			if (target == null)
-				throw new ArgumentNullException("target");
+				throw new ArgumentNullException(nameof(target));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
+			Contract.EndContractBlock();
 
 			try
 			{
@@ -702,17 +724,18 @@ namespace Open.Threading
 			}
 		}
 
-        /// <summary>
-        /// Excutes an action within the context of a a SemaphoreSlim.
-        /// </summary>
-        /// <param name="target">The semaphore instance</param>
-        /// <param name="closure">The action to execute.</param>
+		/// <summary>
+		/// Excutes an action within the context of a a SemaphoreSlim.
+		/// </summary>
+		/// <param name="target">The semaphore instance</param>
+		/// <param name="closure">The action to execute.</param>
 		public static void Execute(this SemaphoreSlim target, Action closure)
 		{
 			if (target == null)
-				throw new ArgumentNullException("target");
+				throw new ArgumentNullException(nameof(target));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
+			Contract.EndContractBlock();
 
 			try
 			{
@@ -732,19 +755,20 @@ namespace Open.Threading
 			}
 		}
 
-        /// <summary>
-        /// Excutes a function within the context of a a Semaphore.
-        /// </summary>
-        /// <typeparam name="T">Type of the result.</typeparam>
-        /// <param name="target">The semaphore instance</param>
-        /// <param name="closure">The function to execute.</param>
+		/// <summary>
+		/// Excutes a function within the context of a a Semaphore.
+		/// </summary>
+		/// <typeparam name="T">Type of the result.</typeparam>
+		/// <param name="target">The semaphore instance</param>
+		/// <param name="closure">The function to execute.</param>
 		/// <returns>The value of the function.</returns>
 		public static T Execute<T>(this Semaphore target, Func<T> closure)
 		{
 			if (target == null)
-				throw new ArgumentNullException("target");
+				throw new ArgumentNullException(nameof(target));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
+			Contract.EndContractBlock();
 
 			try
 			{
@@ -764,19 +788,20 @@ namespace Open.Threading
 			}
 		}
 
-        /// <summary>
-        /// Excutes a function within the context of a a SemaphoreSlim.
-        /// </summary>
-        /// <typeparam name="T">Type of the result.</typeparam>
-        /// <param name="target">The semaphore instance</param>
-        /// <param name="closure">The function to execute.</param>
+		/// <summary>
+		/// Excutes a function within the context of a a SemaphoreSlim.
+		/// </summary>
+		/// <typeparam name="T">Type of the result.</typeparam>
+		/// <param name="target">The semaphore instance</param>
+		/// <param name="closure">The function to execute.</param>
 		/// <returns>The value of the function.</returns>
 		public static T Execute<T>(this SemaphoreSlim target, Func<T> closure)
 		{
 			if (target == null)
-				throw new ArgumentNullException("target");
+				throw new ArgumentNullException(nameof(target));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
+			Contract.EndContractBlock();
 
 			try
 			{
@@ -796,19 +821,20 @@ namespace Open.Threading
 			}
 		}
 
-        /// <summary>
-        /// Excutes a task within the context of a a SemaphoreSlim.
-        /// </summary>
-        /// <typeparam name="T">Type of the result.</typeparam>
-        /// <param name="target">The semaphore instance</param>
-        /// <param name="closure">The function to execute as a task.</param>
+		/// <summary>
+		/// Excutes a task within the context of a a SemaphoreSlim.
+		/// </summary>
+		/// <typeparam name="T">Type of the result.</typeparam>
+		/// <param name="target">The semaphore instance</param>
+		/// <param name="closure">The function to execute as a task.</param>
 		/// <returns>A task containing the result.</returns>
 		public static async Task<T> ExecuteAsync<T>(this SemaphoreSlim target, Func<T> closure)
 		{
 			if (target == null)
-				throw new ArgumentNullException("target");
+				throw new ArgumentNullException(nameof(target));
 			if (closure == null)
-				throw new ArgumentNullException("closure");
+				throw new ArgumentNullException(nameof(closure));
+			Contract.EndContractBlock();
 
 			try
 			{
@@ -828,19 +854,20 @@ namespace Open.Threading
 			}
 		}
 
-        /// <summary>
-        /// Excutes a task within the context of a a SemaphoreSlim.
-        /// </summary>
-        /// <typeparam name="T">Type of the result.</typeparam>
-        /// <param name="target">The semaphore instance</param>
-        /// <param name="task">The task being waited on.</param>
+		/// <summary>
+		/// Excutes a task within the context of a a SemaphoreSlim.
+		/// </summary>
+		/// <typeparam name="T">Type of the result.</typeparam>
+		/// <param name="target">The semaphore instance</param>
+		/// <param name="task">The task being waited on.</param>
 		/// <returns>The task provided.</returns>
 		public static async Task<T> ExecuteAsync<T>(this SemaphoreSlim target, Task<T> task)
 		{
 			if (target == null)
-				throw new ArgumentNullException("target");
+				throw new ArgumentNullException(nameof(target));
 			if (task == null)
-				throw new ArgumentNullException("task");
+				throw new ArgumentNullException(nameof(task));
+			Contract.EndContractBlock();
 
 			try
 			{
@@ -860,13 +887,13 @@ namespace Open.Threading
 			}
 		}
 
-        /// <summary>
-        /// A class that can be used as a locking context for an object and then selectively locks individual keys.
-        /// 
-        /// Example: Coupling this with Dictionary could simplify synchronized access to the key-values.
-        /// </summary>
-        /// <typeparam name="TKey">The type of the key.</typeparam>
-        /// <typeparam name="TSyncObject">The type of the object.</typeparam>
+		/// <summary>
+		/// A class that can be used as a locking context for an object and then selectively locks individual keys.
+		/// 
+		/// Example: Coupling this with Dictionary could simplify synchronized access to the key-values.
+		/// </summary>
+		/// <typeparam name="TKey">The type of the key.</typeparam>
+		/// <typeparam name="TSyncObject">The type of the object.</typeparam>
 		public class Helper<TKey, TSyncObject>
 			where TSyncObject : class, new()
 		{
@@ -884,7 +911,8 @@ namespace Open.Threading
 				get
 				{
 					if (key == null)
-						throw new ArgumentNullException("target");
+						throw new ArgumentNullException(nameof(key));
+					Contract.EndContractBlock();
 
 					return _locks.GetOrAdd(key, k => new TSyncObject())
 						?? new TSyncObject(); // Satisfies code contracts... (Will never actually occur).
@@ -909,9 +937,10 @@ namespace Open.Threading
 			public void Lock(TKey key, Action closure)
 			{
 				if (key == null)
-					throw new ArgumentNullException("key");
+					throw new ArgumentNullException(nameof(key));
 				if (closure == null)
-					throw new ArgumentNullException("closure");
+					throw new ArgumentNullException(nameof(closure));
+				Contract.EndContractBlock();
 
 				ThreadSafety.Lock(this[key], closure);
 			}
@@ -952,12 +981,12 @@ namespace Open.Threading
 		}
 
 
-        /// <summary>
-        /// A class that can be used as a locking context for an object and then selectively locks individual keys.
-        /// 
-        /// Example: Coupling this with Dictionary could simplify synchronized access to the key-values.
-        /// </summary>
-        /// <typeparam name="TKey">The type of the key.</typeparam>
+		/// <summary>
+		/// A class that can be used as a locking context for an object and then selectively locks individual keys.
+		/// 
+		/// Example: Coupling this with Dictionary could simplify synchronized access to the key-values.
+		/// </summary>
+		/// <typeparam name="TKey">The type of the key.</typeparam>
 		public class Helper<TKey> : Helper<TKey, object>
 			where TKey : class
 		{
@@ -971,29 +1000,29 @@ namespace Open.Threading
 
 
 
-        /// <summary>
-        /// A class that can be used as a locking context for an object and then selectively locks individual keys.
-        /// The keys are strings.
-        /// 
-        /// Example: Coupling this with Dictionary could simplify synchronized access to the key-values.
-        /// </summary>
+		/// <summary>
+		/// A class that can be used as a locking context for an object and then selectively locks individual keys.
+		/// The keys are strings.
+		/// 
+		/// Example: Coupling this with Dictionary could simplify synchronized access to the key-values.
+		/// </summary>
 		public class Helper : Helper<string>
 		{
 
 		}
 
-        /// <summary>
-        /// A set of extensions that helps synchronize and improve the robustness of file access.
-        /// 
-        /// If your application is multi-threaded but has exclusive access to files, this can help eliminate exceptions when attempting high-throughput file read/writes.
-        /// </summary>
-        public static class File
+		/// <summary>
+		/// A set of extensions that helps synchronize and improve the robustness of file access.
+		/// 
+		/// If your application is multi-threaded but has exclusive access to files, this can help eliminate exceptions when attempting high-throughput file read/writes.
+		/// </summary>
+		public static class File
 		{
 
 			internal static void ValidatePath(string path)
 			{
 				if (path == null)
-					throw new ArgumentNullException("path");
+					throw new ArgumentNullException(nameof(path));
 				if (String.IsNullOrWhiteSpace(path))
 					throw new ArgumentException("Cannot be empty or white space.", "path");
 			}
@@ -1015,6 +1044,7 @@ namespace Open.Threading
 				int? millisecondsTimeout = null, bool throwsOnTimeout = false)
 			{
 				ValidatePath(path);
+				Contract.EndContractBlock();
 
 				return Instance.Write(path, closure, millisecondsTimeout, throwsOnTimeout);
 			}
@@ -1032,7 +1062,9 @@ namespace Open.Threading
 				FileShare share = FileShare.None)
 			{
 				if (closure == null)
-					throw new ArgumentNullException("closure");
+					throw new ArgumentNullException(nameof(closure));
+				Contract.EndContractBlock();
+
 				WriteTo(path, () =>
 				{
 					using (FileStream fs = Unsafe.GetFileStream(path, retries, millisecondsRetryDelay, mode, access, share))
@@ -1075,9 +1107,10 @@ namespace Open.Threading
 				bool throwsOnTimeout = false)
 			{
 				if (text == null)
-					throw new ArgumentNullException("text");
+					throw new ArgumentNullException(nameof(text));
+				Contract.EndContractBlock();
 
-				ThreadSafety.File.AppendTo(path, fs =>
+				AppendTo(path, fs =>
 				{
 					using (var sw = new StreamWriter(fs))
 					{
@@ -1094,6 +1127,7 @@ namespace Open.Threading
 				int? millisecondsTimeout = null)
 			{
 				ValidatePath(path);
+				Contract.EndContractBlock();
 
 				return Instance.WriteValue(path, closure, millisecondsTimeout);
 			}
@@ -1105,6 +1139,7 @@ namespace Open.Threading
 				int? millisecondsTimeout = null, bool throwsOnTimeout = false)
 			{
 				ValidatePath(path);
+				Contract.EndContractBlock();
 
 				return Instance.Read(path, closure, millisecondsTimeout, throwsOnTimeout);
 			}
@@ -1117,6 +1152,7 @@ namespace Open.Threading
 				int? millisecondsTimeout = null, bool throwsOnTimeout = false)
 			{
 				ValidatePath(path);
+				Contract.EndContractBlock();
 
 				return Instance.ReadUpgradeable(path, closure, millisecondsTimeout, throwsOnTimeout);
 			}
@@ -1129,6 +1165,7 @@ namespace Open.Threading
 				int? millisecondsTimeout = null, bool throwsOnTimeout = false)
 			{
 				ValidatePath(path);
+				Contract.EndContractBlock();
 
 				return Instance.ReadUpgradeable(path, out result, closure, millisecondsTimeout, throwsOnTimeout);
 			}
@@ -1161,6 +1198,7 @@ namespace Open.Threading
 				int? millisecondsTimeout = null)
 			{
 				ValidatePath(path);
+				Contract.EndContractBlock();
 
 				return Instance.ReadValue(path, closure, millisecondsTimeout);
 			}
@@ -1180,7 +1218,8 @@ namespace Open.Threading
 			{
 				ValidatePath(path);
 				if (closure == null)
-					throw new ArgumentNullException("closure");
+					throw new ArgumentNullException(nameof(closure));
+				Contract.EndContractBlock();
 
 				ReadFrom(path, () =>
 				{
@@ -1200,7 +1239,8 @@ namespace Open.Threading
 				int? millisecondsTimeout = null)
 			{
 				if (closure == null)
-					throw new ArgumentNullException("closure");
+					throw new ArgumentNullException(nameof(closure));
+				Contract.EndContractBlock();
 
 				return ReadFrom(path, () =>
 				{
@@ -1227,6 +1267,7 @@ namespace Open.Threading
 					FileMode mode, FileAccess access, FileShare share, int bufferSize = 4096)
 				{
 					ValidatePath(path);
+					Contract.EndContractBlock();
 
 					FileStream fs = null;
 					int failCount = 0;
@@ -1259,6 +1300,7 @@ namespace Open.Threading
 					FileMode mode, FileAccess access, FileShare share, int bufferSize = 4096)
 				{
 					ValidatePath(path);
+					Contract.EndContractBlock();
 
 					FileStream fs = null;
 					int failCount = 0;
@@ -1293,7 +1335,7 @@ namespace Open.Threading
 					int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
 					int bufferSize = 4096, bool useAsync = false)
 				{
-					return Unsafe.GetFileStream(path, retries, millisecondsRetryDelay,
+					return GetFileStream(path, retries, millisecondsRetryDelay,
 						FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize);
 				}
 
@@ -1303,7 +1345,7 @@ namespace Open.Threading
 				int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
 				int bufferSize = 4096, bool useAsync = false)
 				{
-					return Unsafe.GetFileStreamAsync(path, retries, millisecondsRetryDelay,
+					return GetFileStreamAsync(path, retries, millisecondsRetryDelay,
 						FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize);
 				}
 
@@ -1344,16 +1386,16 @@ namespace Open.Threading
 
 				if (!ReadFrom(path, () => Directory.Exists(path), millisecondsTimeout))
 				{
-					ThreadSafety.File.ReadFromUpgradeable(path, () =>
+					ReadFromUpgradeable(path, () =>
 					{
 						if (!Directory.Exists(path))
-							ThreadSafety.File.WriteTo(path,
+							WriteTo(path,
 								() => Directory.CreateDirectory(path),
 								millisecondsTimeout);
 					});
 				}
 			}
-            
+
 
 
 		}

@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace Open.Threading.Tasks
 {
-    public class AsyncQuery<TResult> : AsyncProcess
+	public class AsyncQuery<TResult> : AsyncProcess
 	{
 		TResult _latest;
 

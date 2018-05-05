@@ -1,6 +1,6 @@
+﻿using Open.Disposable;
 using System;
 using System.Threading;
-using Open.Disposable;
 
 namespace Open.Threading
 {
@@ -117,20 +117,20 @@ namespace Open.Threading
 
 		public virtual void Reading(Action action)
 		{
-            AssertIsAlive();
+			AssertIsAlive();
 			action();
 		}
 
 		public virtual T Reading<T>(Func<T> action)
 		{
-            AssertIsAlive();
+			AssertIsAlive();
 			return action();
 		}
 
 		protected void SignalModified()
 		{
-            Modified?.Invoke(this, EventArgs.Empty);
-        }
+			Modified?.Invoke(this, EventArgs.Empty);
+		}
 
 		public bool Modifying(Func<bool> action)
 		{
@@ -149,7 +149,7 @@ namespace Open.Threading
 
 		public virtual bool Modifying(Func<bool> condition, Func<bool> action)
 		{
-            AssertIsAlive();
+			AssertIsAlive();
 			if (condition != null && !condition())
 				return false;
 
@@ -165,7 +165,7 @@ namespace Open.Threading
 
 		public virtual bool Modifying<T>(ref T target, T newValue)
 		{
-            AssertIsAlive();
+			AssertIsAlive();
 			if (target.Equals(newValue)) return false;
 
 			IncrementVersion();
@@ -190,7 +190,7 @@ namespace Open.Threading
 
 		public override void Reading(Action action)
 		{
-            AssertIsAlive();
+			AssertIsAlive();
 			lock (_sync) action();
 		}
 

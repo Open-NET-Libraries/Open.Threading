@@ -165,14 +165,14 @@ namespace Open.Threading
 		private void OnValueInitializedInternal(T initValue)
 		{
 			OnValueInitialized(initValue);
-            ValueInitialzed?.Invoke(this, initValue);
-        }
+			ValueInitialzed?.Invoke(this, initValue);
+		}
 
 		private void OnValueUpdatedInternal(T originalValue, T newValue)
 		{
 			OnValueUpdated(originalValue, newValue);
-            ValueUpdated?.Invoke(this, originalValue, newValue);
-        }
+			ValueUpdated?.Invoke(this, originalValue, newValue);
+		}
 		#endregion
 
 

@@ -65,21 +65,18 @@ namespace Open.Threading
 		{
 			if (resetOwnership)
 				_syncOwned = false;
-			var valueM = value as ModificationSynchronizer;
-			if (valueM != null)
+			if (value is ModificationSynchronizer valueM)
 				valueM.Modified += OnModified;
 			var old = _sync;
 			_sync = value;
-			var oldM = old as ModificationSynchronizer;
-			if (oldM != null)
+			if (old is ModificationSynchronizer oldM)
 				oldM.Modified -= OnModified;
 			return old != value;
 		}
 
 		void SetSyncSynced(IModificationSynchronizer value)
 		{
-			var sync = _sync as ModificationSynchronizer;
-			if (sync != null)
+			if (_sync is ModificationSynchronizer sync)
 			{
 				bool owned = false;
 				// Allow for wrap-up.
@@ -126,8 +123,7 @@ namespace Open.Threading
 
 		public void Freeze()
 		{
-			var sync = _sync as ModificationSynchronizer;
-			if (sync != null)
+			if (_sync is ModificationSynchronizer sync)
 			{
 				// Allow for wrap-up.
 				sync.Modifying(() =>
