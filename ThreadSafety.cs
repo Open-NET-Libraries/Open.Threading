@@ -3,7 +3,6 @@
  * Licensing: MIT https://github.com/electricessence/Open/blob/dotnet-core/LICENSE.md
  */
 
-using Open.Diagnostics;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -33,7 +32,7 @@ namespace Open.Threading
 
 			// Avoid the lock object being immutable...
 
-			if (syncObject is String)
+			if (syncObject is string)
 				return false;
 
 			if (syncObject is ValueType)
@@ -135,27 +134,71 @@ namespace Open.Threading
 				throw new ArgumentOutOfRangeException(nameof(closure), millisecondsTimeout, "Cannot be a negative value.");
 			Contract.EndContractBlock();
 
-			bool lockTaken = false;
+			var lockTaken = false;
 			try
 			{
 				Monitor.TryEnter(syncObject, millisecondsTimeout, ref lockTaken);
-				if (!lockTaken)
+				if (lockTaken)
+				{
+					closure();
+
+				}
+				else
 				{
 					if (throwsOnTimeout)
 						throw new TimeoutException("Could not gain a lock within the timeout specified.");
-
-					return false;
 				}
-
-				closure();
 			}
 			finally
 			{
-				if (lockTaken) Monitor.Exit(syncObject);
+				if (lockTaken)
+					Monitor.Exit(syncObject);
 			}
 
-			return true;
+			return lockTaken;
 		}
+
+
+		/// <summary>
+		/// Attempts to acquire a lock on the syncObject before executing the provided Action with an optional timeout.
+		/// </summary>
+		/// <param name="syncObject">Object used for synchronization.</param>
+		/// <param name="query">The query to execute once a lock is acquired.</param>
+		/// <param name="millisecondsTimeout">Maximum time allowed to wait for a lock.</param>
+		/// If false and a timeout is reached, then it this method returns false and allows the caller to handle the failed lock.</param>
+		/// <returns>
+		/// True if a lock was acquired and the Action executed.
+		/// </returns>
+		public static bool TryLock<TSync>(TSync syncObject, Action closure, int millisecondsTimeout = 0) where TSync : class
+		{
+			ValidateSyncObject(syncObject);
+			if (closure == null)
+				throw new ArgumentNullException(nameof(closure));
+			if (millisecondsTimeout < 0)
+				throw new ArgumentOutOfRangeException(nameof(closure), millisecondsTimeout, "Cannot be a negative value.");
+			Contract.EndContractBlock();
+
+			var lockTaken = false;
+			try
+			{
+				if (millisecondsTimeout == 0)
+					Monitor.TryEnter(syncObject, ref lockTaken);
+				else
+					Monitor.TryEnter(syncObject, millisecondsTimeout, ref lockTaken);
+
+				if (lockTaken)
+					closure();
+			}
+			finally
+			{
+				if (lockTaken)
+					Monitor.Exit(syncObject);
+			}
+
+			return lockTaken;
+		}
+
+
 
 		/// <summary>
 		/// Sychronizes executing the Action only if the condition is true.
@@ -177,11 +220,13 @@ namespace Open.Threading
 				throw new ArgumentNullException(nameof(closure));
 			Contract.EndContractBlock();
 
-			if (condition(false))
-				lock (syncObject)
-					if (condition(true)) { closure(); return true; }
-
-			return false;
+			if (!condition(false)) return false;
+			lock (syncObject)
+			{
+				if (!condition(true)) return false;
+				closure();
+			}
+			return true;
 		}
 
 		/// <summary>
@@ -203,11 +248,13 @@ namespace Open.Threading
 				throw new ArgumentNullException(nameof(closure));
 			Contract.EndContractBlock();
 
-			if (condition())
-				lock (syncObject)
-					if (condition()) { closure(); return true; }
-
-			return false;
+			if (!condition()) return false;
+			lock (syncObject)
+			{
+				if (!condition()) return false;
+				closure();
+			}
+			return true;
 		}
 
 		/// <summary>
@@ -218,9 +265,9 @@ namespace Open.Threading
 		/// <param name="syncObject">Object used for synchronization.</param>
 		/// <param name="condition">Logic function to execute DCL pattern.  Passes in a boolean that is true for when a lock is held.  The return value indicates if a lock is still needed and the query should be executed.
 		/// Note: Passing a boolean to the condition when a lock is acquired helps if it is important to the cosuming logic to avoid recursive locking.</param>
-		/// <param name="query">The query to execute once a lock is acquired.  Only executes if the condition returns true.</param>
+		/// <param name="closure">The closure to execute once a lock is acquired.  Only executes if the condition returns true.</param>
 		/// <param name="millisecondsTimeout">Maximum time allowed to wait for a lock.</param>
-		/// <param name="throwsOnTimeout">If true and a timeout is reached, then a TimeoutException is thrown.
+		/// <param name="throwsOnTimeout">If true and a timeout is reached, then a TimeoutException is thrown.</param>
 		///
 		/// <returns>
 		/// True if a lock was acquired and the Action executed.
@@ -236,22 +283,27 @@ namespace Open.Threading
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
 
+			var lockTaken = false;
 			if (condition(false))
 			{
-				bool lockTaken = false;
 				try
 				{
 					Monitor.TryEnter(syncObject, millisecondsTimeout, ref lockTaken);
-					if (!lockTaken)
+					if (lockTaken)
+					{
+						if (condition(true))
+						{
+							closure();
+							return true;
+						}
+					}
+					else
 					{
 						if (throwsOnTimeout)
 							throw new TimeoutException("Could not gain a lock within the timeout specified.");
-
-						return false;
 					}
 
-					if (condition(true))
-						closure();
+
 				}
 				finally
 				{
@@ -259,7 +311,7 @@ namespace Open.Threading
 				}
 			}
 
-			return true;
+			return lockTaken;
 		}
 
 		/// <summary>
@@ -269,9 +321,9 @@ namespace Open.Threading
 		/// 
 		/// <param name="syncObject">Object used for synchronization.</param>
 		/// <param name="condition">Logic function to execute DCL pattern.  The return value indicates if a lock is still needed and the query should be executed.</param>
-		/// <param name="query">The query to execute once a lock is acquired.  Only executes if the condition returns true.</param>
+		/// <param name="closure">The closure to execute once a lock is acquired.  Only executes if the condition returns true.</param>
 		/// <param name="millisecondsTimeout">Maximum time allowed to wait for a lock.</param>
-		/// <param name="throwsOnTimeout">If true and a timeout is reached, then a TimeoutException is thrown.
+		/// <param name="throwsOnTimeout">If true and a timeout is reached, then a TimeoutException is thrown.</param>
 		///
 		/// <returns>
 		/// True if a lock was acquired and the Action executed.
@@ -478,7 +530,7 @@ namespace Open.Threading
 
 
 			var r = result;
-			bool written = false;
+			var written = false;
 
 			var synced = SynchronizeReadWriteKeyAndObject(
 				syncObject, key, condition, () =>
@@ -558,7 +610,6 @@ namespace Open.Threading
 		/// <param name="key">The key that represents what value being read from.</param>
 		/// <param name="closure">The function to execute while under a read lock.</param>
 		/// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
-		/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
 		/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
 		/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
 		public static T SynchronizeRead<TSync, T>(TSync syncObject, object key, Func<T> closure, int? millisecondsTimeout = null) where TSync : class
@@ -694,200 +745,6 @@ namespace Open.Threading
 		}
 
 		/// <summary>
-		/// Excutes an action within the context of a a Semaphore.
-		/// </summary>
-		/// <param name="target">The semaphore instance</param>
-		/// <param name="closure">The action to execute.</param>
-		public static void Execute(this Semaphore target, Action closure)
-		{
-			if (target == null)
-				throw new ArgumentNullException(nameof(target));
-			if (closure == null)
-				throw new ArgumentNullException(nameof(closure));
-			Contract.EndContractBlock();
-
-			try
-			{
-				target.WaitOne();
-				closure();
-			}
-			finally
-			{
-				try
-				{
-					target.Release();
-				}
-				catch (SemaphoreFullException sfex)
-				{
-					sfex.WriteToDebug();
-				}
-			}
-		}
-
-		/// <summary>
-		/// Excutes an action within the context of a a SemaphoreSlim.
-		/// </summary>
-		/// <param name="target">The semaphore instance</param>
-		/// <param name="closure">The action to execute.</param>
-		public static void Execute(this SemaphoreSlim target, Action closure)
-		{
-			if (target == null)
-				throw new ArgumentNullException(nameof(target));
-			if (closure == null)
-				throw new ArgumentNullException(nameof(closure));
-			Contract.EndContractBlock();
-
-			try
-			{
-				target.Wait();
-				closure();
-			}
-			finally
-			{
-				try
-				{
-					target.Release();
-				}
-				catch (SemaphoreFullException sfex)
-				{
-					sfex.WriteToDebug();
-				}
-			}
-		}
-
-		/// <summary>
-		/// Excutes a function within the context of a a Semaphore.
-		/// </summary>
-		/// <typeparam name="T">Type of the result.</typeparam>
-		/// <param name="target">The semaphore instance</param>
-		/// <param name="closure">The function to execute.</param>
-		/// <returns>The value of the function.</returns>
-		public static T Execute<T>(this Semaphore target, Func<T> closure)
-		{
-			if (target == null)
-				throw new ArgumentNullException(nameof(target));
-			if (closure == null)
-				throw new ArgumentNullException(nameof(closure));
-			Contract.EndContractBlock();
-
-			try
-			{
-				target.WaitOne();
-				return closure();
-			}
-			finally
-			{
-				try
-				{
-					target.Release();
-				}
-				catch (SemaphoreFullException sfex)
-				{
-					sfex.WriteToDebug();
-				}
-			}
-		}
-
-		/// <summary>
-		/// Excutes a function within the context of a a SemaphoreSlim.
-		/// </summary>
-		/// <typeparam name="T">Type of the result.</typeparam>
-		/// <param name="target">The semaphore instance</param>
-		/// <param name="closure">The function to execute.</param>
-		/// <returns>The value of the function.</returns>
-		public static T Execute<T>(this SemaphoreSlim target, Func<T> closure)
-		{
-			if (target == null)
-				throw new ArgumentNullException(nameof(target));
-			if (closure == null)
-				throw new ArgumentNullException(nameof(closure));
-			Contract.EndContractBlock();
-
-			try
-			{
-				target.Wait();
-				return closure();
-			}
-			finally
-			{
-				try
-				{
-					target.Release();
-				}
-				catch (SemaphoreFullException sfex)
-				{
-					sfex.WriteToDebug();
-				}
-			}
-		}
-
-		/// <summary>
-		/// Excutes a task within the context of a a SemaphoreSlim.
-		/// </summary>
-		/// <typeparam name="T">Type of the result.</typeparam>
-		/// <param name="target">The semaphore instance</param>
-		/// <param name="closure">The function to execute as a task.</param>
-		/// <returns>A task containing the result.</returns>
-		public static async Task<T> ExecuteAsync<T>(this SemaphoreSlim target, Func<T> closure)
-		{
-			if (target == null)
-				throw new ArgumentNullException(nameof(target));
-			if (closure == null)
-				throw new ArgumentNullException(nameof(closure));
-			Contract.EndContractBlock();
-
-			try
-			{
-				await target.WaitAsync().ConfigureAwait(false);
-				return closure();
-			}
-			finally
-			{
-				try
-				{
-					target.Release();
-				}
-				catch (SemaphoreFullException sfex)
-				{
-					sfex.WriteToDebug();
-				}
-			}
-		}
-
-		/// <summary>
-		/// Excutes a task within the context of a a SemaphoreSlim.
-		/// </summary>
-		/// <typeparam name="T">Type of the result.</typeparam>
-		/// <param name="target">The semaphore instance</param>
-		/// <param name="task">The task being waited on.</param>
-		/// <returns>The task provided.</returns>
-		public static async Task<T> ExecuteAsync<T>(this SemaphoreSlim target, Task<T> task)
-		{
-			if (target == null)
-				throw new ArgumentNullException(nameof(target));
-			if (task == null)
-				throw new ArgumentNullException(nameof(task));
-			Contract.EndContractBlock();
-
-			try
-			{
-				await target.WaitAsync().ConfigureAwait(false);
-				return await task;
-			}
-			finally
-			{
-				try
-				{
-					target.Release();
-				}
-				catch (SemaphoreFullException sfex)
-				{
-					sfex.WriteToDebug();
-				}
-			}
-		}
-
-		/// <summary>
 		/// A class that can be used as a locking context for an object and then selectively locks individual keys.
 		/// 
 		/// Example: Coupling this with Dictionary could simplify synchronized access to the key-values.
@@ -922,13 +779,7 @@ namespace Open.Threading
 			/// <summary>
 			/// Clears all synchronization objects.
 			/// </summary>
-			public void Reset()
-			{
-				_locks.Clear();
-			}
-
-
-
+			public void Reset() => _locks.Clear();
 
 
 			/// <summary>
@@ -949,33 +800,27 @@ namespace Open.Threading
 			/// Sychronizes executing the Action based on the cacheKey provided using a timeout.
 			/// Throws a TimeoutException if throwsOnTimeout is true (default) and a lock could not be aquired.
 			/// </summary>
-			public void Lock(TKey key, Action closure, int millisecondsTimeout, bool throwsOnTimeout = true)
-			{
-				ThreadSafety.Lock(this[key], closure, millisecondsTimeout, throwsOnTimeout);
-			}
+			public bool Lock(TKey key, Action closure, int millisecondsTimeout, bool throwsOnTimeout = true)
+				=> ThreadSafety.Lock(this[key], closure, millisecondsTimeout, throwsOnTimeout);
 
-
-
-
-
-
+			/// <summary>
+			/// Attempts to sychronize executing the Action based on the cacheKey provided using a timeout.
+			/// </summary>
+			public bool TryLock(TKey key, Action closure, int millisecondsTimeout)
+				=> ThreadSafety.TryLock(this[key], closure, millisecondsTimeout);
 
 			/// <summary>
 			/// Sychronizes executing the Action only if the condition is true based on the cacheKey provided.
 			/// </summary>
 			public void LockConditional(TKey key, Func<bool> condition, Action closure)
-			{
-				ThreadSafety.LockConditional(this[key], condition, closure);
-			}
+				=> ThreadSafety.LockConditional(this[key], condition, closure);
 
 			/// <summary>
 			/// Sychronizes executing the Action only if the condition is true based on the cacheKey provided using a timeout.
 			/// Throws a TimeoutException if throwsOnTimeout is true (default) and a lock could not be aquired.
 			/// </summary>
-			public void LockConditional(TKey key, Func<bool> condition, Action closure, int millisecondsTimeout, bool throwsOnTimeout)
-			{
-				ThreadSafety.LockConditional(this[key], condition, closure, millisecondsTimeout, throwsOnTimeout);
-			}
+			public bool LockConditional(TKey key, Func<bool> condition, Action closure, int millisecondsTimeout, bool throwsOnTimeout)
+				=> ThreadSafety.LockConditional(this[key], condition, closure, millisecondsTimeout, throwsOnTimeout);
 
 
 		}
@@ -1023,8 +868,9 @@ namespace Open.Threading
 			{
 				if (path == null)
 					throw new ArgumentNullException(nameof(path));
-				if (String.IsNullOrWhiteSpace(path))
-					throw new ArgumentException("Cannot be empty or white space.", "path");
+				if (string.IsNullOrWhiteSpace(path))
+					throw new ArgumentException("Cannot be empty or white space.", nameof(path));
+				Contract.EndContractBlock();
 			}
 
 			static ReadWriteHelper<string> _instance;
@@ -1067,7 +913,7 @@ namespace Open.Threading
 
 				WriteTo(path, () =>
 				{
-					using (FileStream fs = Unsafe.GetFileStream(path, retries, millisecondsRetryDelay, mode, access, share))
+					using (var fs = Unsafe.GetFileStream(path, retries, millisecondsRetryDelay, mode, access, share))
 						closure(fs);
 				},
 				millisecondsTimeout, throwsOnTimeout);
@@ -1175,7 +1021,7 @@ namespace Open.Threading
 				int? millisecondsTimeout = null, bool throwsOnTimeout = false)
 			{
 
-				bool writtenTo = false;
+				var writtenTo = false;
 				if (!Exists(path)) // TODO: Implement out bool writtenTo
 				{
 					ReadFromUpgradeable(out writtenTo, path, () =>
@@ -1223,7 +1069,7 @@ namespace Open.Threading
 
 				ReadFrom(path, () =>
 				{
-					using (FileStream fs = Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay))
+					using (var fs = Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay))
 						closure(fs);
 				},
 				millisecondsTimeout, throwsOnTimeout);
@@ -1244,7 +1090,7 @@ namespace Open.Threading
 
 				return ReadFrom(path, () =>
 				{
-					using (FileStream fs = Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay))
+					using (var fs = Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay))
 						return closure(fs);
 				}, millisecondsTimeout);
 			}
@@ -1270,7 +1116,7 @@ namespace Open.Threading
 					Contract.EndContractBlock();
 
 					FileStream fs = null;
-					int failCount = 0;
+					var failCount = 0;
 					do
 					{
 						// Need to retry in case of cross process locking...
@@ -1303,7 +1149,7 @@ namespace Open.Threading
 					Contract.EndContractBlock();
 
 					FileStream fs = null;
-					int failCount = 0;
+					var failCount = 0;
 					do
 					{
 						// Need to retry in case of cross process locking...
@@ -1381,6 +1227,7 @@ namespace Open.Threading
 				int? millisecondsTimeout = null)
 			{
 				ValidatePath(path);
+				Contract.EndContractBlock();
 
 				path = Path.GetDirectoryName(path);
 
@@ -1390,7 +1237,11 @@ namespace Open.Threading
 					{
 						if (!Directory.Exists(path))
 							WriteTo(path,
-								() => Directory.CreateDirectory(path),
+								() =>
+								{
+									Debug.Assert(path != null);
+									return Directory.CreateDirectory(path);
+								},
 								millisecondsTimeout);
 					});
 				}

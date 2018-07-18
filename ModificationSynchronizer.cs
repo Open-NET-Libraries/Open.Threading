@@ -179,11 +179,11 @@ namespace Open.Threading
 	public sealed class SimpleLockingModificationSynchronizer : ModificationSynchronizer
 	{
 
-		readonly object _sync = new Object();
+		readonly object _sync = new object();
 
 		public SimpleLockingModificationSynchronizer(object sync = null)
 		{
-			_sync = sync ?? new Object();
+			_sync = sync ?? new object();
 		}
 
 
@@ -202,7 +202,7 @@ namespace Open.Threading
 
 		public override bool Modifying(Func<bool> condition, Func<bool> action)
 		{
-			bool modified = false;
+			var modified = false;
 			ThreadSafety.LockConditional(
 				_sync,
 				() => AssertIsAlive() && (condition == null || condition()),
@@ -274,7 +274,7 @@ namespace Open.Threading
 			if (condition != null && !_sync.ReadValue(condition))
 				return false;
 
-			bool modified = false;
+			var modified = false;
 			_sync.ReadUpgradeable(() =>
 			{
 				AssertIsAlive();

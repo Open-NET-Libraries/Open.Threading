@@ -40,7 +40,7 @@ namespace Open.Threading.Tasks
 				}, () =>
 				{
 
-					task = new Task<TResult>((Func<object, TResult>)Process, new Progress());
+					task = new Task<TResult>(Process, new Progress());
 					task.Start(Scheduler);
 					InternalTask = InternalTaskValued = task;
 					Count++;
@@ -169,7 +169,7 @@ namespace Open.Threading.Tasks
 		{
 			get
 			{
-				return GetLatestOrRunning(out DateTime completed);
+				return GetLatestOrRunning(out var completed);
 			}
 		}
 
@@ -211,9 +211,9 @@ namespace Open.Threading.Tasks
 
 		public virtual bool TryGetLatest(out TResult latest, out DateTime completed)
 		{
-			TResult result = default(TResult);
-			DateTime resultComplete = DateTime.MinValue;
-			bool isReady = SyncLock.ReadValue(() =>
+			var result = default(TResult);
+			var resultComplete = DateTime.MinValue;
+			var isReady = SyncLock.ReadValue(() =>
 			{
 				result = _latest;
 				resultComplete = LatestCompleted;
@@ -226,7 +226,7 @@ namespace Open.Threading.Tasks
 
 		public virtual bool TryGetLatest(out TResult latest)
 		{
-			return TryGetLatest(out latest, out DateTime completed);
+			return TryGetLatest(out latest, out var completed);
 		}
 
 		public virtual bool TryGetLatestOrStart(out TResult latest, out DateTime completed)
@@ -239,12 +239,12 @@ namespace Open.Threading.Tasks
 
 		public virtual bool TryGetLatestOrStart(out TResult latest)
 		{
-			return TryGetLatestOrStart(out latest, out DateTime completed);
+			return TryGetLatestOrStart(out latest, out var completed);
 		}
 
 		public virtual bool TryGetLatestOrStart()
 		{
-			return TryGetLatestOrStart(out TResult latest, out DateTime completed);
+			return TryGetLatestOrStart(out var latest, out var completed);
 		}
 
 
@@ -269,7 +269,7 @@ namespace Open.Threading.Tasks
 
 		public TResult GetLatestOrRunning(out DateTime completed)
 		{
-			if (!TryGetLatest(out TResult result, out completed))
+			if (!TryGetLatest(out var result, out completed))
 			{
 				result = RunningValue;
 				completed = DateTime.Now;

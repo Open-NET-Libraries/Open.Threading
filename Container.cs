@@ -120,13 +120,13 @@ namespace Open.Threading
 		public bool SetValue(T value)
 		{
 			AssertIsAlive();
-			bool init = false;
+			var init = false;
 
-			T original = SyncLock.WriteValue(() =>
+			var original = SyncLock.WriteValue(() =>
 			{
 				AssertIsAlive();
 
-				T o = _value;
+				var o = _value;
 				_value = value;
 				init = !HasValue;
 				HasValue = true;
@@ -136,7 +136,7 @@ namespace Open.Threading
 			if (init)
 				OnValueInitializedInternal(value);
 
-			bool updating = !original.Equals(value);
+			var updating = !original.Equals(value);
 			if (updating)
 				OnValueUpdatedInternal(original, value);
 
@@ -191,10 +191,10 @@ namespace Open.Threading
 		/// <returns>True if the source is set.</returns>
 		public bool GetValue(out T value)
 		{
-			bool hv = false;
+			var hv = false;
 			value = SyncLock.ReadValue(() =>
 			{
-				T r = GetValue();
+				var r = GetValue();
 				hv = HasValue;
 				return r;
 			});
@@ -207,7 +207,7 @@ namespace Open.Threading
 		/// <param name="valueFactory">The Func&lt;TLock&gt; for creating the source if it's missing.</param>
 		public T GetOrUpdate(Func<T> valueFactory)
 		{
-			T result = _value;
+			var result = _value;
 			if (valueFactory != null)
 			{
 				SyncLock.ReadWriteConditional((locked) =>
@@ -320,7 +320,7 @@ namespace Open.Threading
 		{
 			return SyncLock.ReadValue(() =>
 			{
-				T result = base.Eval();
+				var result = base.Eval();
 				ValueFactory = null;
 				return result;
 			});

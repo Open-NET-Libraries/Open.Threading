@@ -1,7 +1,7 @@
-
+﻿
+using Open.Disposable;
 using System;
 using System.Threading;
-using Open.Disposable;
 
 namespace Open.Threading
 {
@@ -41,8 +41,8 @@ namespace Open.Threading
 			return sync == null
 				? new ModificationSynchronizer()
 				: sync is ReaderWriterLockSlim
-					? (ModificationSynchronizer)(new ReadWriteModificationSynchronizer((ReaderWriterLockSlim)sync))
-					: (ModificationSynchronizer)(new SimpleLockingModificationSynchronizer());
+					? new ReadWriteModificationSynchronizer((ReaderWriterLockSlim)sync)
+					: (ModificationSynchronizer)new SimpleLockingModificationSynchronizer();
 		}
 
 
@@ -78,7 +78,7 @@ namespace Open.Threading
 		{
 			if (_sync is ModificationSynchronizer sync)
 			{
-				bool owned = false;
+				var owned = false;
 				// Allow for wrap-up.
 				if (!sync.IsDisposed) sync.Modifying(() =>
 				 {

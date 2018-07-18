@@ -147,7 +147,7 @@ namespace Open.Threading
 					return new T();
 
 				var state = t.AsyncState;
-				T result = (T)state;
+				var result = (T)state;
 				return result;
 			}
 		}
@@ -181,7 +181,7 @@ namespace Open.Threading
 		{
 			get
 			{
-				var result = String.Empty;
+				var result = string.Empty;
 				if (LatestCompleted != default(DateTime))
 					result += "\n" + (DateTime.Now - LatestCompleted).ToString() + " ago";
 

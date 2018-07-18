@@ -10,15 +10,23 @@
 Part of the "Open" set of libraries.</Description>
     <PackageLicenseUrl>https://github.com/electricessence/Open.Threading/blob/master/LISCENSE.md</PackageLicenseUrl>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>1.3.0</Version>
-    <AssemblyVersion>1.3.0.0</AssemblyVersion>
-    <FileVersion>1.3.0.0</FileVersion>
+    <Version>1.4.1</Version>
+    <AssemblyVersion>1.4.0.0</AssemblyVersion>
+    <FileVersion>1.4.0.0</FileVersion>
     <Copyright>https://github.com/electricessence/Open.Threading/blob/master/LISCENSE.md</Copyright>
     <PackageProjectUrl>https://github.com/electricessence/Open.Threading/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/electricessence/Open.Threading/</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>dotnet, dotnet-core, dotnetcore, cs, collections, extensions, threadsafe, thread-safe, readwrite, read-write, readerwriterlock, readerwriterlockslim</PackageTags>
-    <PackageReleaseNotes>Updated to .NET Standard for compatability.</PackageReleaseNotes>
+    <PackageReleaseNotes></PackageReleaseNotes>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,7 +42,7 @@ Part of the "Open" set of libraries.</Description>
 
   <ItemGroup>
     <PackageReference Include="Open.Diagnostics" Version="1.3.0" />
-    <PackageReference Include="Open.Threading.ReadWrite" Version="1.1.0" />
+    <PackageReference Include="Open.Threading.ReadWrite" Version="1.1.1" />
   </ItemGroup>
 
 </Project>
