@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace Open.Threading
 {
+	[SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
 	public class Progress
 	{
 		public Progress()
@@ -25,23 +27,14 @@ namespace Open.Threading
 		long _count;
 		public long Count
 		{
-			get
-			{
-				return _count;
-			}
-			set
-			{
-				Interlocked.Exchange(ref _count, value);
-			}
+			get => _count;
+			set => Interlocked.Exchange(ref _count, value);
 		}
 
 		long _index;
 		public long Index
 		{
-			get
-			{
-				return _index;
-			}
+			get => _index;
 			set
 			{
 				LastUpdated = DateTime.Now;
@@ -101,7 +94,7 @@ namespace Open.Threading
 				Failed(ex.ToString());
 				if (propagateException)
 					throw;
-				return default(T);
+				return default;
 			}
 		}
 
@@ -113,13 +106,7 @@ namespace Open.Threading
 			Success = success;
 		}
 
-		public bool HasStarted
-		{
-			get
-			{
-				return Count != 0;
-			}
-		}
+		public bool HasStarted => Count != 0;
 
 		public double Value
 		{
@@ -161,29 +148,11 @@ namespace Open.Threading
 			Index = Count;
 		}
 
-		public TimeSpan ElapsedSinceLastUpdated
-		{
-			get
-			{
-				return LastUpdated - Started;
-			}
-		}
+		public TimeSpan ElapsedSinceLastUpdated => LastUpdated - Started;
 
-		public TimeSpan Elapsed
-		{
-			get
-			{
-				return DateTime.Now - Started;
-			}
-		}
+		public TimeSpan Elapsed => DateTime.Now - Started;
 
-		public TimeSpan TimeSinceLastUpdate
-		{
-			get
-			{
-				return DateTime.Now - LastUpdated;
-			}
-		}
+		public TimeSpan TimeSinceLastUpdate => DateTime.Now - LastUpdated;
 
 		public TimeSpan EstimatedTimeLeft
 		{
@@ -203,12 +172,7 @@ namespace Open.Threading
 		}
 
 		public string EstimatedTimeLeftString
-		{
-			get
-			{
-				return EstimatedTimeLeft.ToString();//.ToStringVerbose();
-			}
-		}
+			=> EstimatedTimeLeft.ToString();//.ToStringVerbose();
 
 	}
 }

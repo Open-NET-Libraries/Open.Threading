@@ -20,12 +20,12 @@ namespace Open.Threading.Tasks
 		}
 
 		public AsyncQuery(Func<Progress, TResult> query, TaskScheduler scheduler = null)
-			: base(scheduler)
+			: base(null, scheduler)
 		{
 			Closure = query;
 		}
 
-		protected Task<TResult> EnsureProcessValued(bool once, TimeSpan? timeAllowedBeforeRefresh)
+		protected Task<TResult> EnsureProcessValued(bool once, TimeSpan? timeAllowedBeforeRefresh = null)
 		{
 
 			Task<TResult> task = null;
@@ -52,12 +52,7 @@ namespace Open.Threading.Tasks
 			return task;
 		}
 
-		protected Task<TResult> EnsureProcessValued(bool once)
-		{
-			return EnsureProcessValued(once, null);
-		}
-
-		protected override Task EnsureProcess(bool once, TimeSpan? timeAllowedBeforeRefresh)
+		protected override Task EnsureProcess(bool once, TimeSpan? timeAllowedBeforeRefresh = null)
 		{
 			return EnsureProcessValued(once, timeAllowedBeforeRefresh);
 		}
@@ -79,11 +74,11 @@ namespace Open.Threading.Tasks
 				SyncLock.Write(() => LatestCompleted = DateTime.Now);
 				p.Failed(ex.ToString());
 			}
-			finally
-			{
-				//Interlocked.Decrement(ref _processCount);
-			}
-			return default(TResult);
+			//finally
+			//{
+			//	//Interlocked.Decrement(ref _processCount);
+			//}
+			return default;
 		}
 
 		public bool IsCurrentDataReady
@@ -107,15 +102,12 @@ namespace Open.Threading.Tasks
 			get
 			{
 				var t = InternalTask;
-				if (t == null)
-				{
-					var result = new Progress();
-					if (IsLatestAvailable)
-						result.Finish();
-					return result;
-				}
+				if (t != null) return (Progress)(t.AsyncState);
+				var result = new Progress();
+				if (IsLatestAvailable)
+					result.Finish();
+				return result;
 
-				return (Progress)(t.AsyncState);
 			}
 		}
 
@@ -154,37 +146,22 @@ namespace Open.Threading.Tasks
 
 		public TResult Latest
 		{
-			get
-			{
-				return GetLatest();
-			}
-			protected set
-			{
-				OverrideLatest(value);
-			}
+			get => GetLatest();
+			protected set => OverrideLatest(value);
 		}
 
 
-		public TResult LatestEnsured
-		{
-			get
-			{
-				return GetLatestOrRunning(out var completed);
-			}
-		}
+		public TResult LatestEnsured => GetLatestOrRunning(out _);
 
 		public bool WaitForRunningToComplete(TimeSpan? waitForCurrentTimeout = null)
 		{
 			var task = SyncLock.ReadValue(() => InternalTaskValued);
-			if (task != null)
-			{
-				if (waitForCurrentTimeout.HasValue)
-					task.Wait(waitForCurrentTimeout.Value);
-				else
-					task.Wait();
-				return true;
-			}
-			return false;
+			if (task == null) return false;
+			if (waitForCurrentTimeout.HasValue)
+				task.Wait(waitForCurrentTimeout.Value);
+			else
+				task.Wait();
+			return true;
 		}
 
 
@@ -226,7 +203,7 @@ namespace Open.Threading.Tasks
 
 		public virtual bool TryGetLatest(out TResult latest)
 		{
-			return TryGetLatest(out latest, out var completed);
+			return TryGetLatest(out latest, out _);
 		}
 
 		public virtual bool TryGetLatestOrStart(out TResult latest, out DateTime completed)
@@ -239,13 +216,11 @@ namespace Open.Threading.Tasks
 
 		public virtual bool TryGetLatestOrStart(out TResult latest)
 		{
-			return TryGetLatestOrStart(out latest, out var completed);
+			return TryGetLatestOrStart(out latest, out _);
 		}
 
 		public virtual bool TryGetLatestOrStart()
-		{
-			return TryGetLatestOrStart(out var latest, out var completed);
-		}
+			=> TryGetLatestOrStart(out _, out _);
 
 
 		public TResult Refresh(TimeSpan? timeAllowedBeforeRefresh = null, TimeSpan? waitForCurrentTimeout = null)
@@ -269,11 +244,9 @@ namespace Open.Threading.Tasks
 
 		public TResult GetLatestOrRunning(out DateTime completed)
 		{
-			if (!TryGetLatest(out var result, out completed))
-			{
-				result = RunningValue;
-				completed = DateTime.Now;
-			}
+			if (TryGetLatest(out var result, out completed)) return result;
+			result = RunningValue;
+			completed = DateTime.Now;
 			return result;
 		}
 
@@ -282,7 +255,8 @@ namespace Open.Threading.Tasks
 		protected override void OnDispose(bool calledExplicitly)
 		{
 			base.OnDispose(calledExplicitly);
-			_latest = default(TResult);
+			_latest = default;
+			Closure = null;
 		}
 	}
 }

@@ -1,14 +1,27 @@
 ﻿using Open.Disposable;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Open.Threading
 {
+	[SuppressMessage("ReSharper", "MemberCanBeProtected.Global")]
+	[SuppressMessage("ReSharper", "VirtualMemberNeverOverridden.Global")]
+	[SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
 	public class AsyncProcess<T> : DisposableBase
 		where T : new()
 	{
+
+		public AsyncProcess(Action<T> closure, TaskScheduler scheduler = null)
+		{
+			Closure = closure;
+
+			Scheduler = scheduler ?? TaskScheduler.Default;
+			Count = 0;
+		}
+
 		protected readonly ReaderWriterLockSlim SyncLock = new ReaderWriterLockSlim();
 
 		protected TaskScheduler Scheduler
@@ -17,10 +30,10 @@ namespace Open.Threading
 			private set;
 		}
 
-		protected virtual Action<T> Closure
+		protected Action<T> Closure
 		{
 			get;
-			set;
+			private set;
 		}
 
 		protected Task InternalTask
@@ -41,30 +54,13 @@ namespace Open.Threading
 			protected set;
 		}
 
-		protected AsyncProcess(TaskScheduler scheduler = null)
-			: base()
-		{
-			Scheduler = scheduler ?? TaskScheduler.Default;
-			Count = 0;
-		}
-
-		public AsyncProcess(Action<T> closure, TaskScheduler scheduler = null)
-			: this(scheduler)
-		{
-			Closure = closure;
-		}
-
 		public int Count
 		{
 			get;
 			protected set;
 		}
 
-		public bool HasBeenRun
-		{
-			get { return Count != 0; }
-		}
-
+		public bool HasBeenRun => Count != 0;
 
 		//long _processCount = 0;
 		protected virtual void Process(object progress)
@@ -84,13 +80,13 @@ namespace Open.Threading
 			{
 				SyncLock.Write(() => LastFault = ex);
 			}
-			finally
-			{
-				//Interlocked.Decrement(ref _processCount);
-			}
+			//finally
+			//{
+			//	//Interlocked.Decrement(ref _processCount);
+			//}
 		}
 
-		protected virtual Task EnsureProcess(bool once, TimeSpan? timeAllowedBeforeRefresh)
+		protected virtual Task EnsureProcess(bool once, TimeSpan? timeAllowedBeforeRefresh = null)
 		{
 			Task task = null;
 			SyncLock.ReadWriteConditionalOptimized(
@@ -114,18 +110,8 @@ namespace Open.Threading
 			return task;
 		}
 
-		protected Task EnsureProcess(bool once)
-		{
-			return EnsureProcess(once, null);
-		}
-
-		public bool IsRunning
-		{
-			get
-			{
-				return InternalTask?.IsActive() ?? false;
-			}
-		}
+		// ReSharper disable once MemberCanBeProtected.Global
+		public bool IsRunning => InternalTask?.IsActive() ?? false;
 
 		public void Wait(bool once = true)
 		{
@@ -134,10 +120,9 @@ namespace Open.Threading
 		}
 
 		public bool EnsureActive(bool once = false)
-		{
-			return EnsureProcess(once).IsActive();
-		}
+			=> EnsureProcess(once).IsActive();
 
+		// ReSharper disable once MemberCanBeProtected.Global
 		public virtual T Progress
 		{
 			get
@@ -166,15 +151,10 @@ namespace Open.Threading
 
 	public class AsyncProcess : AsyncProcess<Progress>
 	{
-		protected AsyncProcess(TaskScheduler scheduler = null)
-			: base(scheduler)
-		{
-		}
-
+		// ReSharper disable once MemberCanBeProtected.Global
 		public AsyncProcess(Action<Progress> closure, TaskScheduler scheduler = null)
-			: this(scheduler)
+			: base(closure, scheduler)
 		{
-			Closure = closure;
 		}
 
 		public string TimeStatistics
@@ -182,14 +162,12 @@ namespace Open.Threading
 			get
 			{
 				var result = string.Empty;
-				if (LatestCompleted != default(DateTime))
+				if (LatestCompleted != default)
 					result += "\n" + (DateTime.Now - LatestCompleted).ToString() + " ago";
 
-				if (IsRunning)
-				{
-					var p = Progress;
-					result += "\n" + p.EstimatedTimeLeftString + " remaining";
-				}
+				if (!IsRunning) return result;
+				var p = Progress;
+				result += "\n" + p.EstimatedTimeLeftString + " remaining";
 
 				return result;
 			}
@@ -208,10 +186,10 @@ namespace Open.Threading
 				SyncLock.Write(() => LatestCompleted = DateTime.Now);
 				p.Failed(ex.ToString());
 			}
-			finally
-			{
-				//Interlocked.Decrement(ref _processCount);
-			}
+			//finally
+			//{
+			//	//Interlocked.Decrement(ref _processCount);
+			//}
 		}
 
 	}

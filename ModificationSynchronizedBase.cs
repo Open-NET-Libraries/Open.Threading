@@ -1,12 +1,14 @@
 ﻿
 using Open.Disposable;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace Open.Threading
 {
 
 
+	[SuppressMessage("ReSharper", "VirtualMemberCallInConstructor")]
 	public abstract class ModificationSynchronizedBase : DisposableBase
 	{
 
@@ -19,20 +21,9 @@ namespace Open.Threading
 				AssertIsAlive();
 				return s;
 			}
-			private set
-			{
-				_sync = value;
-			}
 		}
 
-		public bool IsReadOnly
-		{
-			get
-			{
-				// If Sync happens to be null, we also want this to be 'true'.
-				return !(_sync is ModificationSynchronizer);
-			}
-		}
+		public bool IsReadOnly => !(_sync is ModificationSynchronizer);
 
 		protected bool _syncOwned;
 		protected virtual ModificationSynchronizer InitSync(object sync = null)
@@ -40,21 +31,20 @@ namespace Open.Threading
 			_syncOwned = true;
 			return sync == null
 				? new ModificationSynchronizer()
-				: sync is ReaderWriterLockSlim
-					? new ReadWriteModificationSynchronizer((ReaderWriterLockSlim)sync)
+				: sync is ReaderWriterLockSlim slim
+					? new ReadWriteModificationSynchronizer(slim)
 					: (ModificationSynchronizer)new SimpleLockingModificationSynchronizer();
 		}
 
 
-
-		public ModificationSynchronizedBase(ModificationSynchronizer sync = null)
+		protected ModificationSynchronizedBase(ModificationSynchronizer sync = null)
 		{
 			OnModified();
 			SetSync(sync ?? InitSync(), sync != null);
 		}
 
 
-		public ModificationSynchronizedBase(out ModificationSynchronizer sync)
+		protected ModificationSynchronizedBase(out ModificationSynchronizer sync)
 		{
 			OnModified();
 			sync = InitSync();

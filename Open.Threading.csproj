@@ -10,9 +10,9 @@
 Part of the "Open" set of libraries.</Description>
     <PackageLicenseUrl>https://github.com/electricessence/Open.Threading/blob/master/LISCENSE.md</PackageLicenseUrl>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>1.4.1</Version>
-    <AssemblyVersion>1.4.0.0</AssemblyVersion>
-    <FileVersion>1.4.0.0</FileVersion>
+    <Version>1.4.2</Version>
+    <AssemblyVersion>1.4.2.0</AssemblyVersion>
+    <FileVersion>1.4.2.0</FileVersion>
     <Copyright>https://github.com/electricessence/Open.Threading/blob/master/LISCENSE.md</Copyright>
     <PackageProjectUrl>https://github.com/electricessence/Open.Threading/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/electricessence/Open.Threading/</RepositoryUrl>

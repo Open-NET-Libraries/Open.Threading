@@ -4,7 +4,6 @@
  */
 
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
@@ -23,20 +22,14 @@ namespace Open.Threading
 	{
 		public static bool IsValidSyncObject(object syncObject)
 		{
-
-			if (syncObject == null)
-				return false;
-
-			if (syncObject is IEnumerable)
-				return true;
-
 			// Avoid the lock object being immutable...
-
-			if (syncObject is string)
-				return false;
-
-			if (syncObject is ValueType)
-				return false;
+			switch (syncObject)
+			{
+				case string _:
+				case ValueType _:
+				case null:
+					return false;
+			}
 
 			return true;
 		}
@@ -82,7 +75,7 @@ namespace Open.Threading
 
 		/// <summary>
 		/// Applies a lock on the syncObject before executing the provided Action.
-		/// This is keepgoing of a sample method and is direclty equivalient to using the lock keyword and is meant to be the equivalent of the below method without a timeout...
+		/// This is more of a sample method and is direclty equivalient to using the lock keyword and is meant to be the equivalent of the below method without a timeout...
 		/// </summary>
 		public static void Lock<TSync>(TSync syncObject, Action closure) where TSync : class
 		{
@@ -97,7 +90,7 @@ namespace Open.Threading
 
 		/// <summary>
 		/// Applies a lock on the syncObject before executing the provided Action.
-		/// This is keepgoing of a sample method and is direclty equivalient to using the lock keyword and is meant to be the equivalent of the below method without a timeout...
+		/// This is more of a sample method and is direclty equivalient to using the lock keyword and is meant to be the equivalent of the below method without a timeout...
 		/// </summary>
 		/// <returns>The action of the query.</returns>
 		public static T Lock<TSync, T>(TSync syncObject, Func<T> closure) where TSync : class
@@ -117,7 +110,7 @@ namespace Open.Threading
 		/// Throws a TimeoutException if throwsOnTimeout is true (default) and a lock could not be aquired.
 		/// </summary>
 		/// <param name="syncObject">Object used for synchronization.</param>
-		/// <param name="query">The query to execute once a lock is acquired.</param>
+		/// <param name="closure">The query to execute once a lock is acquired.</param>
 		/// <param name="millisecondsTimeout">Maximum time allowed to wait for a lock.</param>
 		/// <param name="throwsOnTimeout">If true and a timeout is reached, then a TimeoutException is thrown.
 		/// If false and a timeout is reached, then it this method returns false and allows the caller to handle the failed lock.</param>
@@ -163,9 +156,8 @@ namespace Open.Threading
 		/// Attempts to acquire a lock on the syncObject before executing the provided Action with an optional timeout.
 		/// </summary>
 		/// <param name="syncObject">Object used for synchronization.</param>
-		/// <param name="query">The query to execute once a lock is acquired.</param>
+		/// <param name="closure">The query to execute once a lock is acquired.</param>
 		/// <param name="millisecondsTimeout">Maximum time allowed to wait for a lock.</param>
-		/// If false and a timeout is reached, then it this method returns false and allows the caller to handle the failed lock.</param>
 		/// <returns>
 		/// True if a lock was acquired and the Action executed.
 		/// </returns>
@@ -207,7 +199,7 @@ namespace Open.Threading
 		/// <param name="syncObject">Object used for synchronization.</param>
 		/// <param name="condition">Logic function to execute DCL pattern.  Passes in a boolean that is true for when a lock is held.  The return value indicates if a lock is still needed and the query should be executed.
 		/// Note: Passing a boolean to the condition when a lock is acquired helps if it is important to the cosuming logic to avoid recursive locking.</param>
-		/// <param name="query">The query to execute once a lock is acquired.  Only executes if the condition returns true.</param>
+		/// <param name="closure">The closure to execute once a lock is acquired.  Only executes if the condition returns true.</param>
 		/// <returns>
 		/// True if the Action executed.
 		/// </returns>						
@@ -235,7 +227,7 @@ namespace Open.Threading
 		/// 
 		/// <param name="syncObject">Object used for synchronization.</param>
 		/// <param name="condition">Logic function to execute DCL pattern.  The return value indicates if a lock is still needed and the query should be executed.</param>
-		/// <param name="query">The query to execute once a lock is acquired.  Only executes if the condition returns true.</param>
+		/// <param name="closure">The closure to execute once a lock is acquired.  Only executes if the condition returns true.</param>
 		/// <returns>
 		/// True if the Action executed.
 		/// </returns>		
@@ -635,10 +627,9 @@ namespace Open.Threading
 		/// <param name="syncObject">The main object that defines the synchronization context.</param>
 		/// <param name="closure">The function to execute while under a read lock.</param>
 		/// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
-		/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
 		/// <returns>The value from the closure.</returns>
 		/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-		public static T SynchronizeRead<TSync, T>(TSync syncObject, Func<T> closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
+		public static T SynchronizeRead<TSync, T>(TSync syncObject, Func<T> closure, int? millisecondsTimeout = null) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
 			if (closure == null)
@@ -653,7 +644,6 @@ namespace Open.Threading
 		/// Manages a read-only operation of any target and the provided key.
 		/// </summary>
 		/// <typeparam name="TSync">Type of the object sync context.</typeparam>
-		/// <typeparam name="T">Type of the result.</typeparam>
 		/// <param name="syncObject">The main object that defines the synchronization context.</param>
 		/// <param name="key">The key that represents what value being read from.</param>
 		/// <param name="closure">The function to execute while under a read lock.</param>
@@ -756,10 +746,6 @@ namespace Open.Threading
 		{
 			protected readonly ConcurrentDictionary<TKey, TSyncObject> _locks = new ConcurrentDictionary<TKey, TSyncObject>();
 
-			public Helper()
-			{
-			}
-
 			/// <summary>
 			/// Returns a unique object based on the provied cacheKey for use in synchronization.
 			/// </summary>
@@ -826,29 +812,24 @@ namespace Open.Threading
 		}
 
 
+		/// <inheritdoc />
 		/// <summary>
 		/// A class that can be used as a locking context for an object and then selectively locks individual keys.
-		/// 
 		/// Example: Coupling this with Dictionary could simplify synchronized access to the key-values.
 		/// </summary>
 		/// <typeparam name="TKey">The type of the key.</typeparam>
 		public class Helper<TKey> : Helper<TKey, object>
 			where TKey : class
 		{
-
-			public Helper()
-			{
-			}
-
 		}
 
 
 
 
+		/// <inheritdoc />
 		/// <summary>
 		/// A class that can be used as a locking context for an object and then selectively locks individual keys.
 		/// The keys are strings.
-		/// 
 		/// Example: Coupling this with Dictionary could simplify synchronized access to the key-values.
 		/// </summary>
 		public class Helper : Helper<string>
@@ -870,6 +851,7 @@ namespace Open.Threading
 					throw new ArgumentNullException(nameof(path));
 				if (string.IsNullOrWhiteSpace(path))
 					throw new ArgumentException("Cannot be empty or white space.", nameof(path));
+				Contract.Ensures(path != null);
 				Contract.EndContractBlock();
 			}
 
@@ -928,7 +910,7 @@ namespace Open.Threading
 				int? millisecondsTimeout = null,
 				bool throwsOnTimeout = false)
 			{
-				WriteToInternal(path, closure, retries, millisecondsRetryDelay, millisecondsTimeout, throwsOnTimeout, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
+				WriteToInternal(path, closure, retries, millisecondsRetryDelay, millisecondsTimeout, throwsOnTimeout);
 			}
 
 			/// <summary>
@@ -940,7 +922,7 @@ namespace Open.Threading
 				int? millisecondsTimeout = null,
 				bool throwsOnTimeout = false)
 			{
-				WriteToInternal(path, closure, retries, millisecondsRetryDelay, millisecondsTimeout, throwsOnTimeout, FileMode.Append, FileAccess.Write, FileShare.None);
+				WriteToInternal(path, closure, retries, millisecondsRetryDelay, millisecondsTimeout, throwsOnTimeout, FileMode.Append);
 			}
 
 			/// <summary>
@@ -1022,16 +1004,13 @@ namespace Open.Threading
 			{
 
 				var writtenTo = false;
-				if (!Exists(path)) // TODO: Implement out bool writtenTo
+				if (!Exists(path))
 				{
 					ReadFromUpgradeable(out writtenTo, path, () =>
 					{
-						if (!System.IO.File.Exists(path))
-						{
-							ThreadSafety.File.WriteTo(path, closure);
-							return true;
-						}
-						return false;
+						if (System.IO.File.Exists(path)) return false;
+						WriteTo(path, closure, millisecondsTimeout, throwsOnTimeout);
+						return true;
 					});
 				}
 				return writtenTo;
@@ -1108,9 +1087,8 @@ namespace Open.Threading
 
 			public static class Unsafe
 			{
-				// TODO: Add async await version...
 				public static FileStream GetFileStream(string path, int retries, int millisecondsRetryDelay,
-					FileMode mode, FileAccess access, FileShare share, int bufferSize = 4096)
+					FileMode mode, FileAccess access, FileShare share, int bufferSize = 4096, bool async = false)
 				{
 					ValidatePath(path);
 					Contract.EndContractBlock();
@@ -1122,7 +1100,7 @@ namespace Open.Threading
 						// Need to retry in case of cross process locking...
 						try
 						{
-							fs = new FileStream(path, mode, access, share, bufferSize, false);
+							fs = new FileStream(path, mode, access, share, bufferSize, async);
 							failCount = 0;
 						}
 						catch (IOException ioex)
@@ -1143,7 +1121,7 @@ namespace Open.Threading
 				}
 
 				public static async Task<FileStream> GetFileStreamAsync(string path, int retries, int millisecondsRetryDelay,
-					FileMode mode, FileAccess access, FileShare share, int bufferSize = 4096)
+					FileMode mode, FileAccess access, FileShare share, int bufferSize = 4096, bool async = true)
 				{
 					ValidatePath(path);
 					Contract.EndContractBlock();
@@ -1155,7 +1133,7 @@ namespace Open.Threading
 						// Need to retry in case of cross process locking...
 						try
 						{
-							fs = new FileStream(path, mode, access, share, bufferSize, true);
+							fs = new FileStream(path, mode, access, share, bufferSize, async);
 							failCount = 0;
 						}
 						catch (IOException ioex)
@@ -1182,7 +1160,7 @@ namespace Open.Threading
 					int bufferSize = 4096, bool useAsync = false)
 				{
 					return GetFileStream(path, retries, millisecondsRetryDelay,
-						FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize);
+						FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, useAsync);
 				}
 
 				public static Task<FileStream> GetFileStreamForReadAsync(
@@ -1192,7 +1170,7 @@ namespace Open.Threading
 				int bufferSize = 4096, bool useAsync = false)
 				{
 					return GetFileStreamAsync(path, retries, millisecondsRetryDelay,
-						FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize);
+						FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, useAsync);
 				}
 
 			}
@@ -1240,6 +1218,7 @@ namespace Open.Threading
 								() =>
 								{
 									Debug.Assert(path != null);
+									// ReSharper disable once AssignNullToNotNullAttribute
 									return Directory.CreateDirectory(path);
 								},
 								millisecondsTimeout);

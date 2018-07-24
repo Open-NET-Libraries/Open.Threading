@@ -1,5 +1,6 @@
 ﻿using Open.Disposable;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace Open.Threading
@@ -12,6 +13,7 @@ namespace Open.Threading
 		T Reading<T>(Func<T> action);
 	}
 
+	[SuppressMessage("ReSharper", "UnusedMemberInSuper.Global")]
 	public interface IModificationSynchronizer : IReadOnlyModificationSynchronizer
 	{
 
@@ -67,36 +69,21 @@ namespace Open.Threading
 		}
 
 		static ReadOnlyModificationSynchronizer _instance;
-		public static ReadOnlyModificationSynchronizer Instance
-		{
-			get
-			{
-				return LazyInitializer.EnsureInitialized(ref _instance);
-			}
-		}
+		public static ReadOnlyModificationSynchronizer Instance => LazyInitializer.EnsureInitialized(ref _instance);
 	}
 
 
 	public class ModificationSynchronizer : DisposableBase, IModificationSynchronizer
 	{
-		public ModificationSynchronizer()
-		{
-		}
-
 		public event EventHandler Modified;
 
-		protected int _modifyingDepth = 0;
+		protected int _modifyingDepth;
 		protected int _version;
 
-		public int Version
-		{
-			get { return _version; }
-		}
+		public int Version => _version;
 
-		public void IncrementVersion()
-		{
-			Interlocked.Increment(ref _version);
-		}
+		// ReSharper disable once MemberCanBeProtected.Global
+		public void IncrementVersion() => Interlocked.Increment(ref _version);
 
 		public void Poke()
 		{
@@ -179,7 +166,7 @@ namespace Open.Threading
 	public sealed class SimpleLockingModificationSynchronizer : ModificationSynchronizer
 	{
 
-		readonly object _sync = new object();
+		readonly object _sync;
 
 		public SimpleLockingModificationSynchronizer(object sync = null)
 		{
@@ -226,7 +213,7 @@ namespace Open.Threading
 	{
 
 		ReaderWriterLockSlim _sync;
-		bool _lockOwned;
+		readonly bool _lockOwned;
 
 		public ReadWriteModificationSynchronizer(ReaderWriterLockSlim sync = null)
 		{
@@ -299,7 +286,7 @@ namespace Open.Threading
 				_sync.EnterUpgradeableReadLock();
 				AssertIsAlive();
 
-				var ver = _version; // Capture the version so that if changes occur indirectly...
+				//var ver = _version; // Capture the version so that if changes occur indirectly...
 				changed = !target.Equals(newValue);
 
 				if (changed)
