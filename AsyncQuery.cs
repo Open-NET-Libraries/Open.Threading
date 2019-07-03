@@ -252,9 +252,9 @@ namespace Open.Threading.Tasks
 
 
 
-		protected override void OnDispose(bool calledExplicitly)
+		protected override void OnDispose()
 		{
-			base.OnDispose(calledExplicitly);
+			base.OnDispose();
 			_latest = default;
 			Closure = null;
 		}

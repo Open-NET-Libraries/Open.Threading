@@ -40,13 +40,8 @@ namespace Open.Threading
 	/// <typeparam name="T">The type to be contained.</typeparam>
 	[SuppressMessage("ReSharper", "UnusedMemberInSuper.Global")]
 	// ReSharper disable once InheritdocConsiderUsage
-	public interface IContainer<T> : IContainValue<T>, IDisposable // To ensure manual cleanup is implmented.
+	public interface IContainer<T> : IContainValue<T>, IDisposable, IDisposalState // To ensure manual cleanup is implmented.
 	{
-		/// <summary>
-		/// Returns true if already disposed.
-		/// </summary>
-		bool IsDisposed { get; }
-
 		/// <summary>
 		/// Initalizes or updates the contained source.
 		/// </summary>
@@ -110,12 +105,12 @@ namespace Open.Threading
 		/// <inheritdoc />
 		public bool SetValue(T value)
 		{
-			AssertIsAlive();
+			this.AssertIsAlive();
 			var init = false;
 
 			var original = SyncLock.WriteValue(() =>
 			{
-				AssertIsAlive();
+				this.AssertIsAlive();
 
 				var o = _value;
 				_value = value;
@@ -194,7 +189,7 @@ namespace Open.Threading
 			{
 				SyncLock.ReadWriteConditional((locked) =>
 				{
-					AssertIsAlive();
+					this.AssertIsAlive();
 					result = _value;
 					return !HasValue;
 				}, () =>
@@ -206,7 +201,7 @@ namespace Open.Threading
 
 		protected void SetHasValue(bool value)
 		{
-			AssertIsAlive();
+			this.AssertIsAlive();
 
 			HasValue = value;
 		}
@@ -223,7 +218,7 @@ namespace Open.Threading
 		}
 
 
-		protected override void OnDispose(bool calledExplicitly)
+		protected override void OnDispose()
 		{
 
 		}
@@ -276,9 +271,9 @@ namespace Open.Threading
 			return SyncLock.ReadValue(_valueFactory ?? base.Eval);
 		}
 
-		protected override void OnDispose(bool calledExplicitly)
+		protected override void OnDispose()
 		{
-			base.OnDispose(calledExplicitly);
+			base.OnDispose();
 			_valueFactory = null;
 		}
 	}

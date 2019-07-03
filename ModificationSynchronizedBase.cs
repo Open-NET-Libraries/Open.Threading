@@ -18,7 +18,7 @@ namespace Open.Threading
 			get
 			{
 				var s = _sync;
-				AssertIsAlive();
+				this.AssertIsAlive();
 				return s;
 			}
 		}
@@ -70,7 +70,7 @@ namespace Open.Threading
 			{
 				var owned = false;
 				// Allow for wrap-up.
-				if (!sync.IsDisposed) sync.Modifying(() =>
+				if (!sync.WasDisposed) sync.Modifying(() =>
 				 {
 					 owned = _syncOwned;
 					 SetSync(value);
@@ -85,20 +85,9 @@ namespace Open.Threading
 			}
 		}
 
-		protected override void OnDispose(bool calledExplicitly)
+		protected override void OnDispose()
 		{
-			if (calledExplicitly)
-				SetSyncSynced(null);
-			else
-			{
-				// var owned = _syncOwned;
-				// var sync = _sync as IDisposable;
-				SetSync(null);
-				// if(sync!=null)
-				// {
-				// 	sync.Dispose();
-				// }
-			}
+			SetSyncSynced(null);
 		}
 
 		protected void OnModified(object source, EventArgs e)

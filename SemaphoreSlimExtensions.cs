@@ -1,5 +1,5 @@
-﻿using Open.Diagnostics;
-using System;
+﻿using System;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,7 +35,7 @@ namespace Open.Threading
 				}
 				catch (SemaphoreFullException sfex)
 				{
-					sfex.WriteToDebug();
+					Debug.WriteLine(sfex.ToString());
 				}
 			}
 		}
@@ -66,7 +66,7 @@ namespace Open.Threading
 				}
 				catch (SemaphoreFullException sfex)
 				{
-					sfex.WriteToDebug();
+					Debug.WriteLine(sfex.ToString());
 				}
 			}
 		}
@@ -99,7 +99,7 @@ namespace Open.Threading
 				}
 				catch (SemaphoreFullException sfex)
 				{
-					sfex.WriteToDebug();
+					Debug.WriteLine(sfex.ToString());
 				}
 			}
 		}
@@ -132,7 +132,7 @@ namespace Open.Threading
 				}
 				catch (SemaphoreFullException sfex)
 				{
-					sfex.WriteToDebug();
+					Debug.WriteLine(sfex.ToString());
 				}
 			}
 		}
@@ -165,7 +165,7 @@ namespace Open.Threading
 				}
 				catch (SemaphoreFullException sfex)
 				{
-					sfex.WriteToDebug();
+					Debug.WriteLine(sfex.ToString());
 				}
 			}
 		}
@@ -198,7 +198,7 @@ namespace Open.Threading
 				}
 				catch (SemaphoreFullException sfex)
 				{
-					sfex.WriteToDebug();
+					Debug.WriteLine(sfex.ToString());
 				}
 			}
 		}

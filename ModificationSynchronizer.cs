@@ -96,7 +96,7 @@ namespace Open.Threading
 			Modified = null; // Clean events before swap.
 		}
 
-		protected override void OnDispose(bool calledExplicitly)
+		protected override void OnDispose()
 		{
 			Modified = null; // Just in case.
 		}
@@ -104,13 +104,13 @@ namespace Open.Threading
 
 		public virtual void Reading(Action action)
 		{
-			AssertIsAlive();
+			this.AssertIsAlive();
 			action();
 		}
 
 		public virtual T Reading<T>(Func<T> action)
 		{
-			AssertIsAlive();
+			this.AssertIsAlive();
 			return action();
 		}
 
@@ -136,7 +136,7 @@ namespace Open.Threading
 
 		public virtual bool Modifying(Func<bool> condition, Func<bool> action)
 		{
-			AssertIsAlive();
+			this.AssertIsAlive();
 			if (condition != null && !condition())
 				return false;
 
@@ -152,7 +152,7 @@ namespace Open.Threading
 
 		public virtual bool Modifying<T>(ref T target, T newValue)
 		{
-			AssertIsAlive();
+			this.AssertIsAlive();
 			if (target.Equals(newValue)) return false;
 
 			IncrementVersion();
@@ -177,13 +177,13 @@ namespace Open.Threading
 
 		public override void Reading(Action action)
 		{
-			AssertIsAlive();
+			this.AssertIsAlive();
 			lock (_sync) action();
 		}
 
 		public override T Reading<T>(Func<T> action)
 		{
-			AssertIsAlive();
+			this.AssertIsAlive();
 			lock (_sync) return action();
 		}
 
@@ -192,7 +192,7 @@ namespace Open.Threading
 			var modified = false;
 			ThreadSafety.LockConditional(
 				_sync,
-				() => AssertIsAlive() && (condition == null || condition()),
+				() => this.AssertIsAlive() && (condition == null || condition()),
 				() => { modified = base.Modifying(null, action); }
 			);
 			return modified;
@@ -201,7 +201,7 @@ namespace Open.Threading
 
 		public override bool Modifying<T>(ref T target, T newValue)
 		{
-			AssertIsAlive();
+			this.AssertIsAlive();
 			if (target.Equals(newValue)) return false;
 
 			lock (_sync) return base.Modifying(ref target, newValue);
@@ -226,11 +226,11 @@ namespace Open.Threading
 			return Interlocked.Exchange(ref _sync, null);
 		}
 
-		protected override void OnDispose(bool calledExplicitly)
+		protected override void OnDispose()
 		{
-			base.OnDispose(calledExplicitly);
+			base.OnDispose();
 			IDisposable s = null;
-			if (!calledExplicitly || !_sync.Write(() => s = Cleanup(), 10 /* Give any cleanup a chance. */ ))
+			if (!_sync.Write(() => s = Cleanup(), 10 /* Give any cleanup a chance. */ ))
 			{
 				s = Cleanup();
 			}
@@ -243,19 +243,19 @@ namespace Open.Threading
 
 		public override void Reading(Action action)
 		{
-			AssertIsAlive();
+			this.AssertIsAlive();
 			_sync.Read(action);
 		}
 
 		public override T Reading<T>(Func<T> action)
 		{
-			AssertIsAlive();
+			this.AssertIsAlive();
 			return _sync.ReadValue(action);
 		}
 
 		public override bool Modifying(Func<bool> condition, Func<bool> action)
 		{
-			AssertIsAlive();
+			this.AssertIsAlive();
 
 			// Try and early invalidate.
 			if (condition != null && !_sync.ReadValue(condition))
@@ -264,7 +264,7 @@ namespace Open.Threading
 			var modified = false;
 			_sync.ReadUpgradeable(() =>
 			{
-				AssertIsAlive();
+				this.AssertIsAlive();
 				if (condition == null || condition())
 				{
 					modified = _sync.WriteValue(() => base.Modifying(null, action));
@@ -276,7 +276,7 @@ namespace Open.Threading
 
 		public override bool Modifying<T>(ref T target, T newValue)
 		{
-			AssertIsAlive();
+			this.AssertIsAlive();
 			if (target.Equals(newValue)) return false;
 
 			bool changed;
@@ -284,7 +284,7 @@ namespace Open.Threading
 			{
 				// Note, there's no need for _modifyingDepth recursion tracking here.
 				_sync.EnterUpgradeableReadLock();
-				AssertIsAlive();
+				this.AssertIsAlive();
 
 				//var ver = _version; // Capture the version so that if changes occur indirectly...
 				changed = !target.Equals(newValue);

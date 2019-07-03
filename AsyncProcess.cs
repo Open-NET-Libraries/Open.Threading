@@ -139,7 +139,7 @@ namespace Open.Threading
 
 
 
-		protected override void OnDispose(bool calledExplicitly)
+		protected override void OnDispose()
 		{
 			SyncLock.Dispose();
 			Scheduler = null;
