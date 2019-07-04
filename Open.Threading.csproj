@@ -10,9 +10,9 @@
 Part of the "Open" set of libraries.</Description>
     <PackageLicenseUrl></PackageLicenseUrl>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>1.5.2</Version>
-    <AssemblyVersion>1.5.2.0</AssemblyVersion>
-    <FileVersion>1.5.2.0</FileVersion>
+    <Version>1.5.3</Version>
+    <AssemblyVersion>1.5.3.0</AssemblyVersion>
+    <FileVersion>1.5.3.0</FileVersion>
     <Copyright>https://github.com/electricessence/Open.Threading/blob/master/LISCENSE.md</Copyright>
     <PackageProjectUrl>https://github.com/electricessence/Open.Threading/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/electricessence/Open.Threading/</RepositoryUrl>
@@ -42,7 +42,7 @@ Part of the "Open" set of libraries.</Description>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Open.Threading.ReadWrite" Version="1.3.1" />
+    <PackageReference Include="Open.Threading.ReadWrite" Version="1.3.2" />
   </ItemGroup>
 
 </Project>
