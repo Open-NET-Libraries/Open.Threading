@@ -895,8 +895,8 @@ namespace Open.Threading
 
 				WriteTo(path, () =>
 				{
-					using (var fs = Unsafe.GetFileStream(path, retries, millisecondsRetryDelay, mode, access, share))
-						closure(fs);
+					using var fs = Unsafe.GetFileStream(path, retries, millisecondsRetryDelay, mode, access, share);
+					closure(fs);
 				},
 				millisecondsTimeout, throwsOnTimeout);
 			}
@@ -940,11 +940,9 @@ namespace Open.Threading
 
 				AppendTo(path, fs =>
 				{
-					using (var sw = new StreamWriter(fs))
-					{
-						sw.WriteLine(text);
-						sw.Flush();
-					}
+					using var sw = new StreamWriter(fs);
+					sw.WriteLine(text);
+					sw.Flush();
 				}, retries, millisecondsRetryDelay, millisecondsTimeout, throwsOnTimeout);
 			}
 
@@ -1048,8 +1046,8 @@ namespace Open.Threading
 
 				ReadFrom(path, () =>
 				{
-					using (var fs = Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay))
-						closure(fs);
+					using var fs = Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay);
+					closure(fs);
 				},
 				millisecondsTimeout, throwsOnTimeout);
 			}
@@ -1069,8 +1067,8 @@ namespace Open.Threading
 
 				return ReadFrom(path, () =>
 				{
-					using (var fs = Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay))
-						return closure(fs);
+					using var fs = Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay);
+					return closure(fs);
 				}, millisecondsTimeout);
 			}
 
@@ -1080,8 +1078,8 @@ namespace Open.Threading
 			{
 				return ReadFrom(path, (fs) =>
 				{
-					using (var reader = new StreamReader(fs))
-						return reader.ReadToEnd();
+					using var reader = new StreamReader(fs);
+					return reader.ReadToEnd();
 				}, retries, millisecondsRetryDelay, millisecondsTimeout);
 			}
 
