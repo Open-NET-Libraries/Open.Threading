@@ -42,7 +42,7 @@ Part of the "Open" set of libraries.</Description>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Open.Threading.ReadWrite" Version="1.3.2" />
+    <PackageReference Include="Open.Threading.ReadWrite" Version="1.3.3" />
   </ItemGroup>
 
 </Project>

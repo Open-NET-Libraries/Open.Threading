@@ -177,12 +177,43 @@ namespace Open.Threading
 		/// <param name="target">The semaphore instance</param>
 		/// <param name="task">The task being waited on.</param>
 		/// <returns>The task provided.</returns>
-		public static async Task<T> ExecuteAsync<T>(this SemaphoreSlim target, Task<T> task)
+		public static async Task<T> TaskExecuteAsync<T>(this SemaphoreSlim target, Task<T> task)
 		{
 			if (target == null)
 				throw new ArgumentNullException(nameof(target));
 			if (task == null)
 				throw new ArgumentNullException(nameof(task));
+			Contract.EndContractBlock();
+
+			try
+			{
+				await target.WaitAsync().ConfigureAwait(false);
+				return await task;
+			}
+			finally
+			{
+				try
+				{
+					target.Release();
+				}
+				catch (SemaphoreFullException sfex)
+				{
+					Debug.WriteLine(sfex.ToString());
+				}
+			}
+		}
+
+
+		/// <summary>
+		/// Excutes a task within the context of a a SemaphoreSlim.
+		/// </summary>
+		/// <typeparam name="T">Type of the result.</typeparam>
+		/// <param name="target">The semaphore instance</param>
+		/// <param name="task">The task being waited on.</param>
+		/// <returns>The task provided.</returns>
+		public static async Task<T> ExecuteAsync<T>(this SemaphoreSlim target, ValueTask<T> task)
+		{
+			if (target is null) throw new ArgumentNullException(nameof(target));
 			Contract.EndContractBlock();
 
 			try
