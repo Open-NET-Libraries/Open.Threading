@@ -1,9 +1,4 @@
-﻿/*!
- * @author electricessence / https://github.com/electricessence/
- * Licensing: MIT https://github.com/electricessence/Open/blob/dotnet-core/LICENSE.md
- */
-
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
@@ -36,7 +31,7 @@ namespace Open.Threading
 
 		internal static void ValidateSyncObject(object syncObject)
 		{
-			if (syncObject == null)
+			if (syncObject is null)
 				throw new ArgumentNullException(nameof(syncObject));
 			if (!IsValidSyncObject(syncObject))
 				throw new ArgumentException(nameof(syncObject));
@@ -80,7 +75,7 @@ namespace Open.Threading
 		public static void Lock<TSync>(TSync syncObject, Action closure) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			Contract.EndContractBlock();
 
@@ -96,7 +91,7 @@ namespace Open.Threading
 		public static T Lock<TSync, T>(TSync syncObject, Func<T> closure) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			Contract.EndContractBlock();
 
@@ -121,7 +116,7 @@ namespace Open.Threading
 		public static bool Lock<TSync>(TSync syncObject, Action closure, int millisecondsTimeout, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			if (millisecondsTimeout < 0)
 				throw new ArgumentOutOfRangeException(nameof(closure), millisecondsTimeout, "Cannot be a negative value.");
@@ -164,7 +159,7 @@ namespace Open.Threading
 		public static bool TryLock<TSync>(TSync syncObject, Action closure, int millisecondsTimeout = 0) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			if (millisecondsTimeout < 0)
 				throw new ArgumentOutOfRangeException(nameof(closure), millisecondsTimeout, "Cannot be a negative value.");
@@ -206,9 +201,9 @@ namespace Open.Threading
 		public static bool LockConditional<TSync>(TSync syncObject, Func<bool, bool> condition, Action closure) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (condition == null)
+			if (condition is null)
 				throw new ArgumentNullException(nameof(condition));
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			Contract.EndContractBlock();
 
@@ -234,9 +229,9 @@ namespace Open.Threading
 		public static bool LockConditional<TSync>(TSync syncObject, Func<bool> condition, Action closure) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (condition == null)
+			if (condition is null)
 				throw new ArgumentNullException(nameof(condition));
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			Contract.EndContractBlock();
 
@@ -268,9 +263,9 @@ namespace Open.Threading
 		public static bool LockConditional<TSync>(TSync syncObject, Func<bool, bool> condition, Action closure, int millisecondsTimeout, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (condition == null)
+			if (condition is null)
 				throw new ArgumentNullException(nameof(condition));
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
@@ -324,9 +319,9 @@ namespace Open.Threading
 		public static bool LockConditional<TSync>(TSync syncObject, Func<bool> condition, Action closure, int millisecondsTimeout, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (condition == null)
+			if (condition is null)
 				throw new ArgumentNullException(nameof(condition));
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
@@ -342,13 +337,13 @@ namespace Open.Threading
 		public static T LockIfNull<TSync, T>(TSync syncObject, ref T target, Func<T> closure) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			Contract.EndContractBlock();
 
-			if (target == null)
+			if (target is null)
 				lock (syncObject)
-					if (target == null)
+					if (target is null)
 						target = closure();
 			return target;
 		}
@@ -373,11 +368,11 @@ namespace Open.Threading
 
 		private static ReadWriteHelper<object> GetReadWriteHelper(object key)
 		{
-			if (key == null)
+			if (key is null)
 				throw new ArgumentNullException(nameof(key));
 			Contract.EndContractBlock();
 			var result = _sychronizeReadWriteRegistry.GetOrCreateValue(key);
-			if (result == null)
+			if (result is null)
 				throw new NullReferenceException();
 			return result;
 		}
@@ -400,11 +395,11 @@ namespace Open.Threading
 			int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (key == null)
+			if (key is null)
 				throw new ArgumentNullException(nameof(key));
-			if (condition == null)
+			if (condition is null)
 				throw new ArgumentNullException(nameof(condition));
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
@@ -436,11 +431,11 @@ namespace Open.Threading
 			int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (key == null)
+			if (key is null)
 				throw new ArgumentNullException(nameof(key));
-			if (condition == null)
+			if (condition is null)
 				throw new ArgumentNullException(nameof(condition));
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
@@ -472,11 +467,11 @@ namespace Open.Threading
 			int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (key == null)
+			if (key is null)
 				throw new ArgumentNullException(nameof(key));
-			if (condition == null)
+			if (condition is null)
 				throw new ArgumentNullException(nameof(condition));
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
@@ -511,11 +506,11 @@ namespace Open.Threading
 			int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (key == null)
+			if (key is null)
 				throw new ArgumentNullException(nameof(key));
-			if (condition == null)
+			if (condition is null)
 				throw new ArgumentNullException(nameof(condition));
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
@@ -554,9 +549,9 @@ namespace Open.Threading
 			int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (condition == null)
+			if (condition is null)
 				throw new ArgumentNullException(nameof(condition));
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
@@ -583,9 +578,9 @@ namespace Open.Threading
 			int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (condition == null)
+			if (condition is null)
 				throw new ArgumentNullException(nameof(condition));
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
@@ -607,9 +602,9 @@ namespace Open.Threading
 		public static T SynchronizeRead<TSync, T>(TSync syncObject, object key, Func<T> closure, int? millisecondsTimeout = null) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (key == null)
+			if (key is null)
 				throw new ArgumentNullException(nameof(key));
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
@@ -632,7 +627,7 @@ namespace Open.Threading
 		public static T SynchronizeRead<TSync, T>(TSync syncObject, Func<T> closure, int? millisecondsTimeout = null) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
@@ -654,9 +649,9 @@ namespace Open.Threading
 		public static bool SynchronizeRead<TSync>(TSync syncObject, object key, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (key == null)
+			if (key is null)
 				throw new ArgumentNullException(nameof(key));
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
@@ -679,7 +674,7 @@ namespace Open.Threading
 		public static bool SynchronizeRead<TSync>(TSync syncObject, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
@@ -701,9 +696,9 @@ namespace Open.Threading
 		public static bool SynchronizeWrite<TSync>(TSync syncObject, object key, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (key == null)
+			if (key is null)
 				throw new ArgumentNullException(nameof(key));
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
@@ -726,7 +721,7 @@ namespace Open.Threading
 		public static bool SynchronizeWrite<TSync>(TSync syncObject, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
 		{
 			ValidateSyncObject(syncObject);
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 			ValidateMillisecondsTimeout(millisecondsTimeout);
 			Contract.EndContractBlock();
@@ -753,7 +748,7 @@ namespace Open.Threading
 			{
 				get
 				{
-					if (key == null)
+					if (key is null)
 						throw new ArgumentNullException(nameof(key));
 					Contract.EndContractBlock();
 
@@ -773,9 +768,9 @@ namespace Open.Threading
 			/// </summary>
 			public void Lock(TKey key, Action closure)
 			{
-				if (key == null)
+				if (key is null)
 					throw new ArgumentNullException(nameof(key));
-				if (closure == null)
+				if (closure is null)
 					throw new ArgumentNullException(nameof(closure));
 				Contract.EndContractBlock();
 
@@ -847,7 +842,7 @@ namespace Open.Threading
 
 			internal static void ValidatePath(string path)
 			{
-				if (path == null)
+				if (path is null)
 					throw new ArgumentNullException(nameof(path));
 				if (string.IsNullOrWhiteSpace(path))
 					throw new ArgumentException("Cannot be empty or white space.", nameof(path));
@@ -855,15 +850,8 @@ namespace Open.Threading
 				Contract.EndContractBlock();
 			}
 
-			static ReadWriteHelper<string> _instance;
-			private static ReadWriteHelper<string> Instance
-			{
-				get
-				{
-					return LazyInitializer.EnsureInitialized(ref _instance, () => new ReadWriteHelper<string>())
-						?? new ReadWriteHelper<string>(); // Code contract resolution...
-				}
-			}
+			static ReadWriteHelper<string>? _instance;
+			private static ReadWriteHelper<string> Instance => LazyInitializer.EnsureInitialized(ref _instance, () => new ReadWriteHelper<string>())!;
 
 			/// <summary>
 			/// Manages registering a ReaderWriterLockSlim an synchronizing the provided query write access.
@@ -889,7 +877,7 @@ namespace Open.Threading
 				FileAccess access = FileAccess.Write,
 				FileShare share = FileShare.None)
 			{
-				if (closure == null)
+				if (closure is null)
 					throw new ArgumentNullException(nameof(closure));
 				Contract.EndContractBlock();
 
@@ -934,7 +922,7 @@ namespace Open.Threading
 				int? millisecondsTimeout = null,
 				bool throwsOnTimeout = false)
 			{
-				if (text == null)
+				if (text is null)
 					throw new ArgumentNullException(nameof(text));
 				Contract.EndContractBlock();
 
@@ -1040,7 +1028,7 @@ namespace Open.Threading
 				bool throwsOnTimeout = false)
 			{
 				ValidatePath(path);
-				if (closure == null)
+				if (closure is null)
 					throw new ArgumentNullException(nameof(closure));
 				Contract.EndContractBlock();
 
@@ -1061,7 +1049,7 @@ namespace Open.Threading
 				int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
 				int? millisecondsTimeout = null)
 			{
-				if (closure == null)
+				if (closure is null)
 					throw new ArgumentNullException(nameof(closure));
 				Contract.EndContractBlock();
 
@@ -1091,7 +1079,7 @@ namespace Open.Threading
 					ValidatePath(path);
 					Contract.EndContractBlock();
 
-					FileStream fs = null;
+					FileStream? fs = null;
 					var failCount = 0;
 					do
 					{
@@ -1115,7 +1103,7 @@ namespace Open.Threading
 
 					} while (failCount != 0);
 
-					return fs;
+					return fs!;
 				}
 
 				public static async Task<FileStream> GetFileStreamAsync(string path, int retries, int millisecondsRetryDelay,
@@ -1124,7 +1112,7 @@ namespace Open.Threading
 					ValidatePath(path);
 					Contract.EndContractBlock();
 
-					FileStream fs = null;
+					FileStream? fs = null;
 					var failCount = 0;
 					do
 					{
@@ -1148,7 +1136,7 @@ namespace Open.Threading
 
 					} while (failCount != 0);
 
-					return fs;
+					return fs!;
 				}
 
 				public static FileStream GetFileStreamForRead(

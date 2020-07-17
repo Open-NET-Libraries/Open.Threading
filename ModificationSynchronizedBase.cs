@@ -12,13 +12,13 @@ namespace Open.Threading
 	public abstract class ModificationSynchronizedBase : DisposableBase
 	{
 
-		private IModificationSynchronizer _sync;
-		public IModificationSynchronizer Sync
+		private IModificationSynchronizer? _sync;
+		public IModificationSynchronizer? Sync
 		{
 			get
 			{
 				var s = _sync;
-				this.AssertIsAlive();
+				AssertIsAlive();
 				return s;
 			}
 		}
@@ -26,10 +26,10 @@ namespace Open.Threading
 		public bool IsReadOnly => !(_sync is ModificationSynchronizer);
 
 		protected bool _syncOwned;
-		protected virtual ModificationSynchronizer InitSync(object sync = null)
+		protected virtual ModificationSynchronizer InitSync(object? sync = null)
 		{
 			_syncOwned = true;
-			return sync == null
+			return sync is null
 				? new ModificationSynchronizer()
 				: sync is ReaderWriterLockSlim slim
 					? new ReadWriteModificationSynchronizer(slim)
@@ -37,7 +37,7 @@ namespace Open.Threading
 		}
 
 
-		protected ModificationSynchronizedBase(ModificationSynchronizer sync = null)
+		protected ModificationSynchronizedBase(ModificationSynchronizer? sync = null)
 		{
 			OnModified();
 			SetSync(sync ?? InitSync(), sync != null);
@@ -51,7 +51,7 @@ namespace Open.Threading
 			SetSync(sync, false);
 		}
 
-		bool SetSync(IModificationSynchronizer value, bool resetOwnership = true)
+		bool SetSync(IModificationSynchronizer? value, bool resetOwnership = true)
 		{
 			if (resetOwnership)
 				_syncOwned = false;
@@ -64,7 +64,7 @@ namespace Open.Threading
 			return old != value;
 		}
 
-		void SetSyncSynced(IModificationSynchronizer value)
+		void SetSyncSynced(IModificationSynchronizer? value)
 		{
 			if (_sync is ModificationSynchronizer sync)
 			{

@@ -60,7 +60,7 @@ namespace Open.Threading
 
 		public void Run(Action closure, bool propagateException = false)
 		{
-			if (closure == null)
+			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
 
 			Start();
@@ -77,9 +77,12 @@ namespace Open.Threading
 			}
 		}
 
+#if NETSTANDARD2_1
+		[return:MaybeNull]
+#endif
 		public T Execute<T>(Func<T> query, bool propagateException = false)
 		{
-			if (query == null)
+			if (query is null)
 				throw new ArgumentNullException(nameof(query));
 
 			Start();
@@ -94,7 +97,7 @@ namespace Open.Threading
 				Failed(ex.ToString());
 				if (propagateException)
 					throw;
-				return default;
+				return default!;
 			}
 		}
 
@@ -125,7 +128,7 @@ namespace Open.Threading
 			set;
 		}
 
-		public string Message
+		public string? Message
 		{
 			get;
 			set;
@@ -133,7 +136,7 @@ namespace Open.Threading
 
 		public void Failed(Exception ex)
 		{
-			if (ex == null)
+			if (ex is null)
 				throw new ArgumentNullException(nameof(ex));
 
 			Failed(ex.ToString());

@@ -14,29 +14,32 @@ namespace Open.Threading
 		where T : new()
 	{
 
-		public AsyncProcess(Action<T> closure, TaskScheduler scheduler = null)
+		protected AsyncProcess(TaskScheduler? scheduler)
 		{
-			Closure = closure;
-
 			Scheduler = scheduler ?? TaskScheduler.Default;
-			Count = 0;
 		}
 
-		protected readonly ReaderWriterLockSlim SyncLock = new ReaderWriterLockSlim();
+		public AsyncProcess(Action<T> closure, TaskScheduler? scheduler = null)
+			: this(scheduler)
+		{
+			Closure = closure ?? throw new ArgumentNullException(nameof(closure));
+		}
 
-		protected TaskScheduler Scheduler
+		protected ReaderWriterLockSlim? SyncLock = new ReaderWriterLockSlim();
+
+		protected TaskScheduler? Scheduler
 		{
 			get;
 			private set;
 		}
 
-		protected Action<T> Closure
+		protected Action<T>? Closure
 		{
 			get;
 			private set;
 		}
 
-		protected Task InternalTask
+		protected Task? InternalTask
 		{
 			get;
 			set;
@@ -48,7 +51,7 @@ namespace Open.Threading
 			protected set;
 		}
 
-		public Exception LastFault
+		public Exception? LastFault
 		{
 			get;
 			protected set;
@@ -65,7 +68,7 @@ namespace Open.Threading
 		//long _processCount = 0;
 		protected virtual void Process(object progress)
 		{
-			if (progress == null)
+			if (progress is null)
 				throw new ArgumentNullException(nameof(progress));
 			Contract.EndContractBlock();
 
@@ -73,12 +76,12 @@ namespace Open.Threading
 			try
 			{
 				//Contract.Assert(Interlocked.Increment(ref _processCount) == 1);
-				Closure(p);
-				SyncLock.Write(() => LatestCompleted = DateTime.Now);
+				Closure!(p);
+				SyncLock!.Write(() => LatestCompleted = DateTime.Now);
 			}
 			catch (Exception ex)
 			{
-				SyncLock.Write(() => LastFault = ex);
+				SyncLock!.Write(() => LastFault = ex);
 			}
 			//finally
 			//{
@@ -88,12 +91,12 @@ namespace Open.Threading
 
 		protected virtual Task EnsureProcess(bool once, TimeSpan? timeAllowedBeforeRefresh = null)
 		{
-			Task task = null;
-			SyncLock.ReadWriteConditionalOptimized(
+			Task? task = null;
+			SyncLock!.ReadWriteConditionalOptimized(
 				write =>
 				{
 					task = InternalTask;
-					return (task == null || !once && !task.IsActive()) // No action, or completed?
+					return (task is null || !once && !task.IsActive()) // No action, or completed?
 						&& (!timeAllowedBeforeRefresh.HasValue // Now?
 							|| timeAllowedBeforeRefresh.Value < DateTime.Now - LatestCompleted); // Or later?
 				}, () =>
@@ -107,7 +110,7 @@ namespace Open.Threading
 				}
 			);
 
-			return task;
+			return task!;
 		}
 
 		// ReSharper disable once MemberCanBeProtected.Global
@@ -128,7 +131,7 @@ namespace Open.Threading
 			get
 			{
 				var t = InternalTask;
-				if (t == null)
+				if (t is null)
 					return new T();
 
 				var state = t.AsyncState;
@@ -141,7 +144,9 @@ namespace Open.Threading
 
 		protected override void OnDispose()
 		{
-			SyncLock.Dispose();
+			var syncLock = Interlocked.Exchange(ref SyncLock, null)!;
+			syncLock.Write(() => { }); // get exclusivity first.
+			syncLock.Dispose();
 			Scheduler = null;
 			InternalTask = null;
 			Closure = null;
@@ -151,8 +156,13 @@ namespace Open.Threading
 
 	public class AsyncProcess : AsyncProcess<Progress>
 	{
+		protected AsyncProcess(TaskScheduler? scheduler) : base(scheduler)
+		{
+			
+		}
+
 		// ReSharper disable once MemberCanBeProtected.Global
-		public AsyncProcess(Action<Progress> closure, TaskScheduler scheduler = null)
+		public AsyncProcess(Action<Progress> closure, TaskScheduler? scheduler = null)
 			: base(closure, scheduler)
 		{
 		}
@@ -179,11 +189,11 @@ namespace Open.Threading
 			try
 			{
 				//Contract.Assert(Interlocked.Increment(ref _processCount) == 1);
-				Closure(p);
+				Closure!(p);
 			}
 			catch (Exception ex)
 			{
-				SyncLock.Write(() => LatestCompleted = DateTime.Now);
+				SyncLock!.Write(() => LatestCompleted = DateTime.Now);
 				p.Failed(ex.ToString());
 			}
 			//finally

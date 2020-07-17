@@ -1,40 +1,44 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
 namespace Open.Threading.Tasks
 {
 	public class AsyncQuery<TResult> : AsyncProcess
 	{
-		TResult _latest;
+#if NETSTANDARD2_1
+		[AllowNull]
+#endif
+		TResult _latest = default!;
 
-		protected new Func<Progress, TResult> Closure
+		protected new Func<Progress, TResult>? Closure
 		{
 			get;
 			private set;
 		}
 
-		protected Task<TResult> InternalTaskValued
+		protected Task<TResult>? InternalTaskValued
 		{
 			get;
 			private set;
 		}
 
-		public AsyncQuery(Func<Progress, TResult> query, TaskScheduler scheduler = null)
-			: base(null, scheduler)
+		public AsyncQuery(Func<Progress, TResult> query, TaskScheduler? scheduler = null)
+			: base(scheduler)
 		{
-			Closure = query;
+			Closure = query ?? throw new ArgumentNullException(nameof(query));
 		}
 
 		protected Task<TResult> EnsureProcessValued(bool once, TimeSpan? timeAllowedBeforeRefresh = null)
 		{
 
-			Task<TResult> task = null;
+			Task<TResult>? task = null;
 
-			SyncLock.ReadWriteConditionalOptimized(
+			SyncLock!.ReadWriteConditionalOptimized(
 				write =>
 				{
 					task = InternalTaskValued;
-					return (task == null || !once && !task.IsActive()) // No action, or completed?
+					return (task is null || !once && !task.IsActive()) // No action, or completed?
 						&& (!timeAllowedBeforeRefresh.HasValue // Now?
 							|| timeAllowedBeforeRefresh.Value < DateTime.Now - LatestCompleted); // Or later?
 				}, () =>
@@ -49,15 +53,16 @@ namespace Open.Threading.Tasks
 			);
 
 			// action could be null in some cases where timeAllowedBeforeRefresh condition is still met.
-			return task;
+			return task!;
 		}
 
 		protected override Task EnsureProcess(bool once, TimeSpan? timeAllowedBeforeRefresh = null)
-		{
-			return EnsureProcessValued(once, timeAllowedBeforeRefresh);
-		}
+			=> EnsureProcessValued(once, timeAllowedBeforeRefresh);
 
 		//long _processCount = 0;
+#if NETSTANDARD2_1
+		[return: MaybeNull]
+#endif
 		protected new TResult Process(object progress)
 		{
 
@@ -65,20 +70,20 @@ namespace Open.Threading.Tasks
 			try
 			{
 				//Contract.Assert(Interlocked.Increment(ref _processCount) == 1);
-				var result = Closure(p);
+				var result = Closure!(p);
 				Latest = result;
 				return result;
 			}
 			catch (Exception ex)
 			{
-				SyncLock.Write(() => LatestCompleted = DateTime.Now);
+				SyncLock!.Write(() => LatestCompleted = DateTime.Now);
 				p.Failed(ex.ToString());
 			}
 			//finally
 			//{
 			//	//Interlocked.Decrement(ref _processCount);
 			//}
-			return default;
+			return default!;
 		}
 
 		public bool IsCurrentDataReady
@@ -86,7 +91,7 @@ namespace Open.Threading.Tasks
 			get
 			{
 				var t = InternalTask;
-				if (t == null)
+				if (t is null)
 					return false;
 				return !t.IsActive();
 			}
@@ -124,7 +129,7 @@ namespace Open.Threading.Tasks
 
 		public virtual void OverrideLatest(TResult value, DateTime? completed = null)
 		{
-			SyncLock.Write(() =>
+			SyncLock!.Write(() =>
 			{
 				_latest = value;
 				LatestCompleted = completed ?? DateTime.Now;
@@ -134,7 +139,7 @@ namespace Open.Threading.Tasks
 
 		public virtual void OverrideLatest(TResult value, Func<TResult, TResult, bool> useNewValueEvaluator, DateTime? completed = null)
 		{
-			SyncLock.ReadWriteConditionalOptimized(
+			SyncLock!.ReadWriteConditionalOptimized(
 				(write) => useNewValueEvaluator(_latest, value),
 				() =>
 				{
@@ -155,8 +160,8 @@ namespace Open.Threading.Tasks
 
 		public bool WaitForRunningToComplete(TimeSpan? waitForCurrentTimeout = null)
 		{
-			var task = SyncLock.ReadValue(() => InternalTaskValued);
-			if (task == null) return false;
+			var task = SyncLock!.ReadValue(() => InternalTaskValued);
+			if (task is null) return false;
 			if (waitForCurrentTimeout.HasValue)
 				task.Wait(waitForCurrentTimeout.Value);
 			else
@@ -169,8 +174,8 @@ namespace Open.Threading.Tasks
 		{
 			get
 			{
-				var task = SyncLock.ReadValue(() => InternalTaskValued);
-				return task == null ? GetRunningValue() : task.Result;
+				var task = SyncLock!.ReadValue(() => InternalTaskValued);
+				return task is null ? GetRunningValue() : task.Result;
 			}
 		}
 
@@ -186,17 +191,22 @@ namespace Open.Threading.Tasks
 			}
 		}
 
-		public virtual bool TryGetLatest(out TResult latest, out DateTime completed)
+		public virtual bool TryGetLatest(
+#if NETSTANDARD2_1
+			[NotNullWhen(true)]
+#endif
+			out TResult latest,
+			out DateTime completed)
 		{
 			var result = default(TResult);
 			var resultComplete = DateTime.MinValue;
-			var isReady = SyncLock.ReadValue(() =>
+			var isReady = SyncLock!.ReadValue(() =>
 			{
 				result = _latest;
 				resultComplete = LatestCompleted;
 				return IsLatestAvailable;
 			});
-			latest = result;
+			latest = result!;
 			completed = resultComplete;
 			return isReady;
 		}
@@ -255,7 +265,7 @@ namespace Open.Threading.Tasks
 		protected override void OnDispose()
 		{
 			base.OnDispose();
-			_latest = default;
+			_latest = default!;
 			Closure = null;
 		}
 	}

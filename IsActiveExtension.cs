@@ -11,7 +11,7 @@ namespace Open.Threading
 		/// </summary>
 		public static bool IsActive(this Task target)
 		{
-			if (target == null)
+			if (target is null)
 				throw new NullReferenceException();
 
 			switch (target.Status)

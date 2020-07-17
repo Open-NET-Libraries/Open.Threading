@@ -33,49 +33,31 @@ namespace Open.Threading
 	public sealed class ReadOnlyModificationSynchronizer : IModificationSynchronizer
 	{
 
-		public void Reading(Action action)
-		{
-			action();
-		}
+		public void Reading(Action action) => action();
 
-		public T Reading<T>(Func<T> action)
-		{
-			return action();
-		}
+		public T Reading<T>(Func<T> action) => action();
 
-		public bool Modifying(Action action, bool assumeChange = false)
-		{
-			throw new NotSupportedException("Synchronizer is read-only.");
-		}
+		public bool Modifying(Action action, bool assumeChange = false) => throw new NotSupportedException("Synchronizer is read-only.");
 
-		public bool Modifying(Func<bool> action)
-		{
-			throw new NotSupportedException("Synchronizer is read-only.");
-		}
+		public bool Modifying(Func<bool> action) => throw new NotSupportedException("Synchronizer is read-only.");
 
-		public bool Modifying(Func<bool> condition, Func<bool> action)
-		{
-			throw new NotSupportedException("Synchronizer is read-only.");
-		}
+		public bool Modifying(Func<bool> condition, Func<bool> action) => throw new NotSupportedException("Synchronizer is read-only.");
 
-		public bool Modifying<T>(ref T target, T newValue)
-		{
-			throw new NotSupportedException("Synchronizer is read-only.");
-		}
+		public bool Modifying<T>(ref T target, T newValue) => throw new NotSupportedException("Synchronizer is read-only.");
 
 		public void Poke()
 		{
 			// Does nothing.
 		}
 
-		static ReadOnlyModificationSynchronizer _instance;
-		public static ReadOnlyModificationSynchronizer Instance => LazyInitializer.EnsureInitialized(ref _instance);
+		static ReadOnlyModificationSynchronizer? _instance;
+		public static ReadOnlyModificationSynchronizer Instance => LazyInitializer.EnsureInitialized(ref _instance)!;
 	}
 
 
 	public class ModificationSynchronizer : DisposableBase, IModificationSynchronizer
 	{
-		public event EventHandler Modified;
+		public event EventHandler? Modified;
 
 		protected int _modifyingDepth;
 		protected int _version;
@@ -104,13 +86,13 @@ namespace Open.Threading
 
 		public virtual void Reading(Action action)
 		{
-			this.AssertIsAlive();
+			AssertIsAlive();
 			action();
 		}
 
 		public virtual T Reading<T>(Func<T> action)
 		{
-			this.AssertIsAlive();
+			AssertIsAlive();
 			return action();
 		}
 
@@ -119,24 +101,19 @@ namespace Open.Threading
 			Modified?.Invoke(this, EventArgs.Empty);
 		}
 
-		public bool Modifying(Func<bool> action)
-		{
-			return Modifying(null, action);
-		}
+		public bool Modifying(Func<bool> action) => Modifying(null, action);
 
 		public bool Modifying(Action action, bool assumeChange = false)
-		{
-			return Modifying(() =>
+			=> Modifying(() =>
 			{
 				var ver = _version; // Capture the version so that if changes occur indirectly...
 				action();
 				return assumeChange || ver != _version;
 			});
-		}
 
-		public virtual bool Modifying(Func<bool> condition, Func<bool> action)
+		public virtual bool Modifying(Func<bool>? condition, Func<bool> action)
 		{
-			this.AssertIsAlive();
+			AssertIsAlive();
 			if (condition != null && !condition())
 				return false;
 
@@ -152,8 +129,8 @@ namespace Open.Threading
 
 		public virtual bool Modifying<T>(ref T target, T newValue)
 		{
-			this.AssertIsAlive();
-			if (target.Equals(newValue)) return false;
+			AssertIsAlive();
+			if (target is null ? newValue is null : target.Equals(newValue)) return false;
 
 			IncrementVersion();
 			target = newValue;
@@ -168,41 +145,38 @@ namespace Open.Threading
 
 		readonly object _sync;
 
-		public SimpleLockingModificationSynchronizer(object sync = null)
+		public SimpleLockingModificationSynchronizer(object? sync = null)
 		{
 			_sync = sync ?? new object();
 		}
 
-
-
 		public override void Reading(Action action)
 		{
-			this.AssertIsAlive();
+			AssertIsAlive();
 			lock (_sync) action();
 		}
 
 		public override T Reading<T>(Func<T> action)
 		{
-			this.AssertIsAlive();
+			AssertIsAlive();
 			lock (_sync) return action();
 		}
 
-		public override bool Modifying(Func<bool> condition, Func<bool> action)
+		public override bool Modifying(Func<bool>? condition, Func<bool> action)
 		{
 			var modified = false;
 			ThreadSafety.LockConditional(
 				_sync,
-				() => this.AssertIsAlive() && (condition == null || condition()),
+				() => AssertIsAlive() && (condition is null || condition()),
 				() => { modified = base.Modifying(null, action); }
 			);
 			return modified;
 		}
 
-
 		public override bool Modifying<T>(ref T target, T newValue)
 		{
-			this.AssertIsAlive();
-			if (target.Equals(newValue)) return false;
+			AssertIsAlive();
+			if (target is null ? newValue is null : target.Equals(newValue)) return false;
 
 			lock (_sync) return base.Modifying(ref target, newValue);
 		}
@@ -211,26 +185,23 @@ namespace Open.Threading
 
 	public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 	{
-
-		ReaderWriterLockSlim _sync;
+		ReaderWriterLockSlim? _sync;
 		readonly bool _lockOwned;
 
-		public ReadWriteModificationSynchronizer(ReaderWriterLockSlim sync = null)
+		public ReadWriteModificationSynchronizer(ReaderWriterLockSlim? sync = null)
 		{
-			if (_sync == null) _lockOwned = true;
+			if (_sync is null) _lockOwned = true;
 			_sync = sync ?? new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 		}
 
-		IDisposable Cleanup()
-		{
-			return Interlocked.Exchange(ref _sync, null);
-		}
+		IDisposable? Cleanup() => Interlocked.Exchange(ref _sync, null);
 
 		protected override void OnDispose()
 		{
 			base.OnDispose();
-			IDisposable s = null;
-			if (!_sync.Write(() => s = Cleanup(), 10 /* Give any cleanup a chance. */ ))
+			IDisposable? s = null;
+			// OnDispose() is only called once so _sync cannot be null at this point.
+			if (!_sync!.Write(() => s = Cleanup(), 10 /* Give any cleanup a chance. */ ))
 			{
 				s = Cleanup();
 			}
@@ -243,31 +214,34 @@ namespace Open.Threading
 
 		public override void Reading(Action action)
 		{
-			this.AssertIsAlive();
-			_sync.Read(action);
+			AssertIsAlive();
+			var sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
+			sync.Read(action);
 		}
 
 		public override T Reading<T>(Func<T> action)
 		{
-			this.AssertIsAlive();
-			return _sync.ReadValue(action);
+			AssertIsAlive();
+			var sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
+			return sync.ReadValue(action);
 		}
 
-		public override bool Modifying(Func<bool> condition, Func<bool> action)
+		public override bool Modifying(Func<bool>? condition, Func<bool> action)
 		{
-			this.AssertIsAlive();
+			AssertIsAlive();
+			var sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 
 			// Try and early invalidate.
-			if (condition != null && !_sync.ReadValue(condition))
+			if (condition != null && !sync.ReadValue(condition))
 				return false;
 
 			var modified = false;
-			_sync.ReadUpgradeable(() =>
+			sync.ReadUpgradeable(() =>
 			{
-				this.AssertIsAlive();
-				if (condition == null || condition())
+				AssertIsAlive();
+				if (condition is null || condition())
 				{
-					modified = _sync.WriteValue(() => base.Modifying(null, action));
+					modified = sync.WriteValue(() => base.Modifying(null, action));
 				}
 			});
 			return modified;
@@ -276,30 +250,31 @@ namespace Open.Threading
 
 		public override bool Modifying<T>(ref T target, T newValue)
 		{
-			this.AssertIsAlive();
-			if (target.Equals(newValue)) return false;
+			AssertIsAlive();
+			if (target is null ? newValue is null : target.Equals(newValue)) return false;
 
+			var sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 			bool changed;
 			try
 			{
 				// Note, there's no need for _modifyingDepth recursion tracking here.
-				_sync.EnterUpgradeableReadLock();
-				this.AssertIsAlive();
+				sync.EnterUpgradeableReadLock();
+				AssertIsAlive();
 
 				//var ver = _version; // Capture the version so that if changes occur indirectly...
-				changed = !target.Equals(newValue);
+				changed = !(target is null ? newValue is null : target.Equals(newValue));
 
 				if (changed)
 				{
 					try
 					{
-						_sync.EnterWriteLock();
+						sync.EnterWriteLock();
 						IncrementVersion();
 						target = newValue;
 					}
 					finally
 					{
-						_sync.ExitWriteLock();
+						sync.ExitWriteLock();
 					}
 
 
@@ -309,7 +284,7 @@ namespace Open.Threading
 			}
 			finally
 			{
-				_sync.ExitUpgradeableReadLock();
+				sync.ExitUpgradeableReadLock();
 			}
 			return changed;
 		}

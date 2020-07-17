@@ -68,7 +68,11 @@ namespace Open.Threading
 	public abstract class ContainerBase<T> : DisposableBase, IContainer<T>
 	{
 		protected readonly ReaderWriterLockSlim SyncLock;
-		private T _value;
+
+#if NETSTANDARD2_1
+		[AllowNull]
+#endif
+		private T _value = default!;
 
 		/// <summary>
 		/// Parameterless constructor.
@@ -105,12 +109,12 @@ namespace Open.Threading
 		/// <inheritdoc />
 		public bool SetValue(T value)
 		{
-			this.AssertIsAlive();
+			AssertIsAlive();
 			var init = false;
 
 			var original = SyncLock.WriteValue(() =>
 			{
-				this.AssertIsAlive();
+				AssertIsAlive();
 
 				var o = _value;
 				_value = value;
@@ -122,11 +126,11 @@ namespace Open.Threading
 			if (init)
 				OnValueInitializedInternal(value);
 
-			var updating = !original.Equals(value);
-			if (updating)
+			var equal = original is null ? value is null : original.Equals(value);
+			if (!equal)
 				OnValueUpdatedInternal(original, value);
 
-			return updating;
+			return !equal;
 		}
 
 
@@ -136,8 +140,8 @@ namespace Open.Threading
 
 
 		#region On Value Initialized/Updated
-		public event ValueInitialzedEventHandler<T> ValueInitialzed;
-		public event ValueUpdatedEventHandler<T> ValueUpdated;
+		public event ValueInitialzedEventHandler<T>? ValueInitialzed;
+		public event ValueUpdatedEventHandler<T>? ValueUpdated;
 
 		protected virtual void OnValueInitialized(T initValue) { }
 		protected virtual void OnValueUpdated(T originalValue, T newValue) { }
@@ -189,7 +193,7 @@ namespace Open.Threading
 			{
 				SyncLock.ReadWriteConditional((locked) =>
 				{
-					this.AssertIsAlive();
+					AssertIsAlive();
 					result = _value;
 					return !HasValue;
 				}, () =>
@@ -201,7 +205,7 @@ namespace Open.Threading
 
 		protected void SetHasValue(bool value)
 		{
-			this.AssertIsAlive();
+			AssertIsAlive();
 
 			HasValue = value;
 		}
@@ -236,7 +240,7 @@ namespace Open.Threading
 	[SuppressMessage("ReSharper", "MemberCanBeProtected.Global")]
 	public class Container<T> : ContainerBase<T>
 	{
-		private Func<T> _valueFactory;
+		private Func<T>? _valueFactory;
 		public Container() { }
 		public Container(T value) : base(value) { }
 
@@ -245,7 +249,7 @@ namespace Open.Threading
 			ValueFactory = valueFactory;
 		}
 
-		public Func<T> ValueFactory
+		public Func<T>? ValueFactory
 		{
 			get => _valueFactory;
 			set
@@ -256,11 +260,11 @@ namespace Open.Threading
 
 		public void EnsureValueFactory(Func<T> valueFactory, bool ensuredIfValuePresent = false)
 		{
-			if (_valueFactory == null || ensuredIfValuePresent && HasValue)
+			if (_valueFactory is null || ensuredIfValuePresent && HasValue)
 			{
 				SyncLock.Write(() =>
 				{
-					if (_valueFactory == null || ensuredIfValuePresent && HasValue)
+					if (_valueFactory is null || ensuredIfValuePresent && HasValue)
 						_valueFactory = valueFactory;
 				});
 			}
