@@ -16,25 +16,20 @@ namespace Open.Threading
 	public static class ThreadSafety
 	{
 		public static bool IsValidSyncObject(object syncObject)
-		{
-			// Avoid the lock object being immutable...
-			switch (syncObject)
+			=> syncObject switch // Avoid the lock object being immutable...
 			{
-				case string _:
-				case ValueType _:
-				case null:
-					return false;
-			}
-
-			return true;
-		}
+				string _ or
+				ValueType _ or
+				null => false,
+				_ => true,
+			};
 
 		internal static void ValidateSyncObject(object syncObject)
 		{
 			if (syncObject is null)
 				throw new ArgumentNullException(nameof(syncObject));
 			if (!IsValidSyncObject(syncObject))
-				throw new ArgumentException(nameof(syncObject));
+				throw new ArgumentException("Is not valid sync object.", nameof(syncObject));
 		}
 
 		internal static void ValidateMillisecondsTimeout(int? millisecondsTimeout)
@@ -364,7 +359,7 @@ namespace Open.Threading
 		}
 
 		private static readonly ConditionalWeakTable<object, ReadWriteHelper<object>> _sychronizeReadWriteRegistry
-			= new ConditionalWeakTable<object, ReadWriteHelper<object>>();
+			= new();
 
 		private static ReadWriteHelper<object> GetReadWriteHelper(object key)
 		{
@@ -739,7 +734,7 @@ namespace Open.Threading
 		public class Helper<TKey, TSyncObject>
 			where TSyncObject : class, new()
 		{
-			protected readonly ConcurrentDictionary<TKey, TSyncObject> _locks = new ConcurrentDictionary<TKey, TSyncObject>();
+			protected readonly ConcurrentDictionary<TKey, TSyncObject> _locks = new();
 
 			/// <summary>
 			/// Returns a unique object based on the provied cacheKey for use in synchronization.

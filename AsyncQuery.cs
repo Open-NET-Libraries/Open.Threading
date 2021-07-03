@@ -44,7 +44,7 @@ namespace Open.Threading.Tasks
 				}, () =>
 				{
 
-					task = new Task<TResult>(Process, new Progress());
+					task = new Task<TResult>(Process!, new Progress());
 					task.Start(Scheduler);
 					InternalTask = InternalTaskValued = task;
 					Count++;

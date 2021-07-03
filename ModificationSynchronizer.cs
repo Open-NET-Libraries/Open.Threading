@@ -1,6 +1,5 @@
 ﻿using Open.Disposable;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace Open.Threading
@@ -13,7 +12,6 @@ namespace Open.Threading
 		T Reading<T>(Func<T> action);
 	}
 
-	[SuppressMessage("ReSharper", "UnusedMemberInSuper.Global")]
 	public interface IModificationSynchronizer : IReadOnlyModificationSynchronizer
 	{
 

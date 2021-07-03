@@ -1,15 +1,11 @@
 ﻿using Open.Disposable;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Open.Threading
 {
-	[SuppressMessage("ReSharper", "MemberCanBeProtected.Global")]
-	[SuppressMessage("ReSharper", "VirtualMemberNeverOverridden.Global")]
-	[SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
 	public class AsyncProcess<T> : DisposableBase
 		where T : new()
 	{
@@ -25,7 +21,7 @@ namespace Open.Threading
 			Closure = closure ?? throw new ArgumentNullException(nameof(closure));
 		}
 
-		protected ReaderWriterLockSlim? SyncLock = new ReaderWriterLockSlim();
+		protected ReaderWriterLockSlim? SyncLock = new();
 
 		protected TaskScheduler? Scheduler
 		{
@@ -158,7 +154,7 @@ namespace Open.Threading
 	{
 		protected AsyncProcess(TaskScheduler? scheduler) : base(scheduler)
 		{
-			
+
 		}
 
 		// ReSharper disable once MemberCanBeProtected.Global

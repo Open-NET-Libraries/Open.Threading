@@ -4,7 +4,6 @@ using System.Threading;
 
 namespace Open.Threading
 {
-	[SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
 	public class Progress
 	{
 		public Progress()
@@ -78,7 +77,7 @@ namespace Open.Threading
 		}
 
 #if NETSTANDARD2_1
-		[return:MaybeNull]
+		[return: MaybeNull]
 #endif
 		public T Execute<T>(Func<T> query, bool propagateException = false)
 		{

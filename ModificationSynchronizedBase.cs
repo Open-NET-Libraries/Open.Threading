@@ -1,14 +1,10 @@
 ﻿
 using Open.Disposable;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace Open.Threading
 {
-
-
-	[SuppressMessage("ReSharper", "VirtualMemberCallInConstructor")]
 	public abstract class ModificationSynchronizedBase : DisposableBase
 	{
 
