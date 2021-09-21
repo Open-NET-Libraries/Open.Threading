@@ -53,12 +53,13 @@ namespace Open.Threading
 		// ReSharper restore EventNeverSubscribedTo.Global
 	}
 
-	/// <inheritdoc cref="DisposableBase" />
-	/// <inheritdoc cref="IContainer&lt;T&gt;" />
+
 	/// <summary>
 	/// Base structure for acting as a disposable 'Thread-Safe Container' for values.  Similar to Nullable but as a class.
 	/// </summary>
 	/// <typeparam name="T">The type to be contained.</typeparam>
+	/// <inheritdoc cref="DisposableBase" />
+	/// <inheritdoc cref="IContainer&lt;T&gt;" />
 	// ReSharper disable once InheritdocConsiderUsage
 	public abstract class ContainerBase<T> : DisposableBase, IContainer<T>
 	{
@@ -205,6 +206,9 @@ namespace Open.Threading
 			HasValue = value;
 		}
 
+		/// <summary>
+		/// Resets the state of the container.
+		/// </summary>
 		public void Reset()
 		{
 			if (!HasValue) return;

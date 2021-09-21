@@ -19,7 +19,7 @@ namespace Open.Threading
 			}
 		}
 
-		public bool IsReadOnly => !(_sync is ModificationSynchronizer);
+		public bool IsReadOnly => _sync is not ModificationSynchronizer;
 
 		protected bool _syncOwned;
 		protected virtual ModificationSynchronizer InitSync(object? sync = null)
