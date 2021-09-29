@@ -41,10 +41,7 @@ namespace Open.Threading
 			}
 		}
 
-		public void IncrementIndex()
-		{
-			Interlocked.Increment(ref _index);
-		}
+		public void IncrementIndex() => Interlocked.Increment(ref _index);
 
 		public void Start(int? newCount = null)
 		{

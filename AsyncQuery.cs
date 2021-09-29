@@ -24,10 +24,7 @@ namespace Open.Threading.Tasks
 		}
 
 		public AsyncQuery(Func<Progress, TResult> query, TaskScheduler? scheduler = null)
-			: base(scheduler)
-		{
-			Closure = query ?? throw new ArgumentNullException(nameof(query));
-		}
+			: base(scheduler) => Closure = query ?? throw new ArgumentNullException(nameof(query));
 
 		protected Task<TResult> EnsureProcessValued(bool once, TimeSpan? timeAllowedBeforeRefresh = null)
 		{
@@ -56,8 +53,7 @@ namespace Open.Threading.Tasks
 			return task!;
 		}
 
-		protected override Task EnsureProcess(bool once, TimeSpan? timeAllowedBeforeRefresh = null)
-			=> EnsureProcessValued(once, timeAllowedBeforeRefresh);
+		protected override Task EnsureProcess(bool once, TimeSpan? timeAllowedBeforeRefresh = null) => EnsureProcessValued(once, timeAllowedBeforeRefresh);
 
 		//long _processCount = 0;
 #if NETSTANDARD2_1
@@ -97,17 +93,14 @@ namespace Open.Threading.Tasks
 			}
 		}
 
-		public bool IsCurrentDataStale(TimeSpan timeAllowedBeforeStale)
-		{
-			return LatestCompleted.Add(timeAllowedBeforeStale) < DateTime.Now;
-		}
+		public bool IsCurrentDataStale(TimeSpan timeAllowedBeforeStale) => LatestCompleted.Add(timeAllowedBeforeStale) < DateTime.Now;
 
 		public override Progress Progress
 		{
 			get
 			{
 				var t = InternalTask;
-				if (t != null) return (Progress)(t.AsyncState);
+				if (t is not null) return (Progress)(t.AsyncState);
 				var result = new Progress();
 				if (IsLatestAvailable)
 					result.Finish();
@@ -122,24 +115,16 @@ namespace Open.Threading.Tasks
 			protected set;
 		}
 
-		protected virtual TResult GetLatest()
-		{
-			return _latest;
-		}
+		protected virtual TResult GetLatest() => _latest;
 
-		public virtual void OverrideLatest(TResult value, DateTime? completed = null)
-		{
-			SyncLock!.Write(() =>
-			{
-				_latest = value;
-				LatestCompleted = completed ?? DateTime.Now;
-				IsLatestAvailable = true;
-			});
-		}
+		public virtual void OverrideLatest(TResult value, DateTime? completed = null) => SyncLock!.Write(() =>
+																						 {
+																							 _latest = value;
+																							 LatestCompleted = completed ?? DateTime.Now;
+																							 IsLatestAvailable = true;
+																						 });
 
-		public virtual void OverrideLatest(TResult value, Func<TResult, TResult, bool> useNewValueEvaluator, DateTime? completed = null)
-		{
-			SyncLock!.ReadWriteConditionalOptimized(
+		public virtual void OverrideLatest(TResult value, Func<TResult, TResult, bool> useNewValueEvaluator, DateTime? completed = null) => SyncLock!.ReadWriteConditionalOptimized(
 				(write) => useNewValueEvaluator(_latest, value),
 				() =>
 				{
@@ -147,7 +132,6 @@ namespace Open.Threading.Tasks
 					LatestCompleted = completed ?? DateTime.Now;
 					IsLatestAvailable = true;
 				});
-		}
 
 		public TResult Latest
 		{
@@ -211,10 +195,7 @@ namespace Open.Threading.Tasks
 			return isReady;
 		}
 
-		public virtual bool TryGetLatest(out TResult latest)
-		{
-			return TryGetLatest(out latest, out _);
-		}
+		public virtual bool TryGetLatest(out TResult latest) => TryGetLatest(out latest, out _);
 
 		public virtual bool TryGetLatestOrStart(out TResult latest, out DateTime completed)
 		{
@@ -224,14 +205,9 @@ namespace Open.Threading.Tasks
 			return result;
 		}
 
-		public virtual bool TryGetLatestOrStart(out TResult latest)
-		{
-			return TryGetLatestOrStart(out latest, out _);
-		}
+		public virtual bool TryGetLatestOrStart(out TResult latest) => TryGetLatestOrStart(out latest, out _);
 
-		public virtual bool TryGetLatestOrStart()
-			=> TryGetLatestOrStart(out _, out _);
-
+		public virtual bool TryGetLatestOrStart() => TryGetLatestOrStart(out _, out _);
 
 		public TResult Refresh(TimeSpan? timeAllowedBeforeRefresh = null, TimeSpan? waitForCurrentTimeout = null)
 		{
@@ -241,16 +217,10 @@ namespace Open.Threading.Tasks
 			return Latest;
 		}
 
-		public TResult RefreshNow(TimeSpan? waitForCurrentTimeout = null)
-		{
-			return Refresh(null, waitForCurrentTimeout);
-		}
+		public TResult RefreshNow(TimeSpan? waitForCurrentTimeout = null) => Refresh(null, waitForCurrentTimeout);
 
 		// Will hold the requesting thread until the action is available.
-		public TResult GetRunningValue()
-		{
-			return EnsureProcessValued(false).Result;
-		}
+		public TResult GetRunningValue() => EnsureProcessValued(false).Result;
 
 		public TResult GetLatestOrRunning(out DateTime completed)
 		{

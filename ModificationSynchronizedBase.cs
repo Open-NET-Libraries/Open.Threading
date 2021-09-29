@@ -36,7 +36,7 @@ namespace Open.Threading
 		protected ModificationSynchronizedBase(ModificationSynchronizer? sync = null)
 		{
 			OnModified();
-			SetSync(sync ?? InitSync(), sync != null);
+			SetSync(sync ?? InitSync(), sync is not null);
 		}
 
 
@@ -81,15 +81,9 @@ namespace Open.Threading
 			}
 		}
 
-		protected override void OnDispose()
-		{
-			SetSyncSynced(null);
-		}
+		protected override void OnDispose() => SetSyncSynced(null);
 
-		protected void OnModified(object source, EventArgs e)
-		{
-			OnModified();
-		}
+		protected void OnModified(object source, EventArgs e) => OnModified();
 
 		protected virtual void OnModified()
 		{

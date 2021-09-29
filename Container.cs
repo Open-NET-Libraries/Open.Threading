@@ -73,10 +73,7 @@ namespace Open.Threading
 		/// <summary>
 		/// Parameterless constructor.
 		/// </summary>
-		protected ContainerBase()
-		{
-			SyncLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
-		}
+		protected ContainerBase() => SyncLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
 		/// <summary>
 		/// Initializes with source given.
@@ -84,10 +81,7 @@ namespace Open.Threading
 		/// <param name="value">Value to be stored.</param>
 		// ReSharper disable once InheritdocConsiderUsage
 		protected ContainerBase(T value)
-			: this()
-		{
-			SetValue(value);
-		}
+			: this() => SetValue(value);
 
 
 		#region IContainer<TLock> Members
@@ -99,8 +93,7 @@ namespace Open.Threading
 		}
 
 		/// <inheritdoc />
-		public T GetValue()
-			=> GetOrUpdate(Eval);
+		public T GetValue() => GetOrUpdate(Eval);
 
 		/// <inheritdoc />
 		public bool SetValue(T value)
@@ -185,7 +178,7 @@ namespace Open.Threading
 		public T GetOrUpdate(Func<T> valueFactory)
 		{
 			var result = _value;
-			if (valueFactory != null)
+			if (valueFactory is not null)
 			{
 				SyncLock.ReadWriteConditional((locked) =>
 				{
@@ -242,18 +235,12 @@ namespace Open.Threading
 		public Container() { }
 		public Container(T value) : base(value) { }
 
-		public Container(Func<T> valueFactory)
-		{
-			ValueFactory = valueFactory;
-		}
+		public Container(Func<T> valueFactory) => ValueFactory = valueFactory;
 
 		public Func<T>? ValueFactory
 		{
 			get => _valueFactory;
-			set
-			{
-				SyncLock.WriteValue(() => _valueFactory = value);
-			}
+			set => SyncLock.WriteValue(() => _valueFactory = value);
 		}
 
 		public void EnsureValueFactory(Func<T> valueFactory, bool ensuredIfValuePresent = false)
@@ -268,10 +255,7 @@ namespace Open.Threading
 			}
 		}
 
-		protected override T Eval()
-		{
-			return SyncLock.ReadValue(_valueFactory ?? base.Eval);
-		}
+		protected override T Eval() => SyncLock.ReadValue(_valueFactory ?? base.Eval);
 
 		protected override void OnDispose()
 		{
@@ -295,14 +279,11 @@ namespace Open.Threading
 		public ContainerLight(Func<T> valueFactory)
 			: base(valueFactory) { }
 
-		protected override T Eval()
-		{
-			return SyncLock.ReadValue(() =>
-			{
-				var result = base.Eval();
-				ValueFactory = null;
-				return result;
-			});
-		}
+		protected override T Eval() => SyncLock.ReadValue(() =>
+												 {
+													 var result = base.Eval();
+													 ValueFactory = null;
+													 return result;
+												 });
 	}
 }

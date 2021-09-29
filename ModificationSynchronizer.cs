@@ -65,21 +65,12 @@ namespace Open.Threading
 		// ReSharper disable once MemberCanBeProtected.Global
 		public void IncrementVersion() => Interlocked.Increment(ref _version);
 
-		public void Poke()
-		{
-			Modifying(() => true);
-		}
+		public void Poke() => Modifying(() => true);
 
 
-		protected override void OnBeforeDispose()
-		{
-			Modified = null; // Clean events before swap.
-		}
+		protected override void OnBeforeDispose() => Modified = null; // Clean events before swap.
 
-		protected override void OnDispose()
-		{
-			Modified = null; // Just in case.
-		}
+		protected override void OnDispose() => Modified = null; // Just in case.
 
 
 		public virtual void Reading(Action action)
@@ -94,25 +85,21 @@ namespace Open.Threading
 			return action();
 		}
 
-		protected void SignalModified()
-		{
-			Modified?.Invoke(this, EventArgs.Empty);
-		}
+		protected void SignalModified() => Modified?.Invoke(this, EventArgs.Empty);
 
 		public bool Modifying(Func<bool> action) => Modifying(null, action);
 
-		public bool Modifying(Action action, bool assumeChange = false)
-			=> Modifying(() =>
-			{
-				var ver = _version; // Capture the version so that if changes occur indirectly...
-				action();
-				return assumeChange || ver != _version;
-			});
+		public bool Modifying(Action action, bool assumeChange = false) => Modifying(() =>
+																								 {
+																									 var ver = _version; // Capture the version so that if changes occur indirectly...
+																									 action();
+																									 return assumeChange || ver != _version;
+																								 });
 
 		public virtual bool Modifying(Func<bool>? condition, Func<bool> action)
 		{
 			AssertIsAlive();
-			if (condition != null && !condition())
+			if (condition is not null && !condition())
 				return false;
 
 			var ver = _version; // Capture the version so that if changes occur indirectly...
@@ -143,10 +130,7 @@ namespace Open.Threading
 
 		readonly object _sync;
 
-		public SimpleLockingModificationSynchronizer(object? sync = null)
-		{
-			_sync = sync ?? new object();
-		}
+		public SimpleLockingModificationSynchronizer(object? sync = null) => _sync = sync ?? new object();
 
 		public override void Reading(Action action)
 		{
@@ -230,7 +214,7 @@ namespace Open.Threading
 			var sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 
 			// Try and early invalidate.
-			if (condition != null && !sync.ReadValue(condition))
+			if (condition is not null && !sync.ReadValue(condition))
 				return false;
 
 			var modified = false;

@@ -15,14 +15,13 @@ namespace Open.Threading
 	/// </summary>
 	public static class ThreadSafety
 	{
-		public static bool IsValidSyncObject(object syncObject)
-			=> syncObject switch // Avoid the lock object being immutable...
-			{
-				string _ or
-				ValueType _ or
-				null => false,
-				_ => true,
-			};
+		public static bool IsValidSyncObject(object syncObject) => syncObject switch // Avoid the lock object being immutable...
+		{
+			string _ or
+			ValueType _ or
+			null => false,
+			_ => true,
+		};
 
 		internal static void ValidateSyncObject(object syncObject)
 		{
@@ -776,29 +775,23 @@ namespace Open.Threading
 			/// Sychronizes executing the Action based on the cacheKey provided using a timeout.
 			/// Throws a TimeoutException if throwsOnTimeout is true (default) and a lock could not be aquired.
 			/// </summary>
-			public bool Lock(TKey key, Action closure, int millisecondsTimeout, bool throwsOnTimeout = true)
-				=> ThreadSafety.Lock(this[key], closure, millisecondsTimeout, throwsOnTimeout);
+			public bool Lock(TKey key, Action closure, int millisecondsTimeout, bool throwsOnTimeout = true) => ThreadSafety.Lock(this[key], closure, millisecondsTimeout, throwsOnTimeout);
 
 			/// <summary>
 			/// Attempts to sychronize executing the Action based on the cacheKey provided using a timeout.
 			/// </summary>
-			public bool TryLock(TKey key, Action closure, int millisecondsTimeout)
-				=> ThreadSafety.TryLock(this[key], closure, millisecondsTimeout);
+			public bool TryLock(TKey key, Action closure, int millisecondsTimeout) => ThreadSafety.TryLock(this[key], closure, millisecondsTimeout);
 
 			/// <summary>
 			/// Sychronizes executing the Action only if the condition is true based on the cacheKey provided.
 			/// </summary>
-			public void LockConditional(TKey key, Func<bool> condition, Action closure)
-				=> ThreadSafety.LockConditional(this[key], condition, closure);
+			public void LockConditional(TKey key, Func<bool> condition, Action closure) => ThreadSafety.LockConditional(this[key], condition, closure);
 
 			/// <summary>
 			/// Sychronizes executing the Action only if the condition is true based on the cacheKey provided using a timeout.
 			/// Throws a TimeoutException if throwsOnTimeout is true (default) and a lock could not be aquired.
 			/// </summary>
-			public bool LockConditional(TKey key, Func<bool> condition, Action closure, int millisecondsTimeout, bool throwsOnTimeout)
-				=> ThreadSafety.LockConditional(this[key], condition, closure, millisecondsTimeout, throwsOnTimeout);
-
-
+			public bool LockConditional(TKey key, Func<bool> condition, Action closure, int millisecondsTimeout, bool throwsOnTimeout) => ThreadSafety.LockConditional(this[key], condition, closure, millisecondsTimeout, throwsOnTimeout);
 		}
 
 
@@ -841,7 +834,7 @@ namespace Open.Threading
 					throw new ArgumentNullException(nameof(path));
 				if (string.IsNullOrWhiteSpace(path))
 					throw new ArgumentException("Cannot be empty or white space.", nameof(path));
-				Contract.Ensures(path != null);
+				Contract.Ensures(path is not null);
 				Contract.EndContractBlock();
 			}
 
@@ -891,10 +884,7 @@ namespace Open.Threading
 				int retries = DEFAULT_RETRIES,
 				int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
 				int? millisecondsTimeout = null,
-				bool throwsOnTimeout = false)
-			{
-				WriteToInternal(path, closure, retries, millisecondsRetryDelay, millisecondsTimeout, throwsOnTimeout);
-			}
+				bool throwsOnTimeout = false) => WriteToInternal(path, closure, retries, millisecondsRetryDelay, millisecondsTimeout, throwsOnTimeout);
 
 			/// <summary>
 			/// Manages file stream read access and retries.
@@ -903,10 +893,7 @@ namespace Open.Threading
 				int retries = DEFAULT_RETRIES,
 				int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
 				int? millisecondsTimeout = null,
-				bool throwsOnTimeout = false)
-			{
-				WriteToInternal(path, closure, retries, millisecondsRetryDelay, millisecondsTimeout, throwsOnTimeout, FileMode.Append);
-			}
+				bool throwsOnTimeout = false) => WriteToInternal(path, closure, retries, millisecondsRetryDelay, millisecondsTimeout, throwsOnTimeout, FileMode.Append);
 
 			/// <summary>
 			/// Manages file stream read access and retries.
@@ -1057,14 +1044,11 @@ namespace Open.Threading
 
 			public static string ReadToString(string path, int retries = DEFAULT_RETRIES,
 				int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
-				int? millisecondsTimeout = null)
-			{
-				return ReadFrom(path, (fs) =>
-				{
-					using var reader = new StreamReader(fs);
-					return reader.ReadToEnd();
-				}, retries, millisecondsRetryDelay, millisecondsTimeout);
-			}
+				int? millisecondsTimeout = null) => ReadFrom(path, (fs) =>
+																  {
+																	  using var reader = new StreamReader(fs);
+																	  return reader.ReadToEnd();
+																  }, retries, millisecondsRetryDelay, millisecondsTimeout);
 
 			public static class Unsafe
 			{
@@ -1138,21 +1122,15 @@ namespace Open.Threading
 					string path,
 					int retries = DEFAULT_RETRIES,
 					int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
-					int bufferSize = 4096, bool useAsync = false)
-				{
-					return GetFileStream(path, retries, millisecondsRetryDelay,
+					int bufferSize = 4096, bool useAsync = false) => GetFileStream(path, retries, millisecondsRetryDelay,
 						FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, useAsync);
-				}
 
 				public static Task<FileStream> GetFileStreamForReadAsync(
 				string path,
 				int retries = DEFAULT_RETRIES,
 				int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
-				int bufferSize = 4096, bool useAsync = false)
-				{
-					return GetFileStreamAsync(path, retries, millisecondsRetryDelay,
+				int bufferSize = 4096, bool useAsync = false) => GetFileStreamAsync(path, retries, millisecondsRetryDelay,
 						FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, useAsync);
-				}
 
 			}
 
@@ -1163,11 +1141,7 @@ namespace Open.Threading
 			public static FileStream GetFileStreamForRead(string path,
 				int retries = DEFAULT_RETRIES,
 				int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
-				int? millisecondsTimeout = null)
-			{
-
-				return ReadFrom(path, () => Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay), millisecondsTimeout);
-			}
+				int? millisecondsTimeout = null) => ReadFrom(path, () => Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay), millisecondsTimeout);
 
 
 
@@ -1198,7 +1172,7 @@ namespace Open.Threading
 							WriteTo(path,
 								() =>
 								{
-									Debug.Assert(path != null);
+									Debug.Assert(path is not null);
 									// ReSharper disable once AssignNullToNotNullAttribute
 									return Directory.CreateDirectory(path);
 								},

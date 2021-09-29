@@ -10,16 +10,10 @@ namespace Open.Threading
 		where T : new()
 	{
 
-		protected AsyncProcess(TaskScheduler? scheduler)
-		{
-			Scheduler = scheduler ?? TaskScheduler.Default;
-		}
+		protected AsyncProcess(TaskScheduler? scheduler) => Scheduler = scheduler ?? TaskScheduler.Default;
 
 		public AsyncProcess(Action<T> closure, TaskScheduler? scheduler = null)
-			: this(scheduler)
-		{
-			Closure = closure ?? throw new ArgumentNullException(nameof(closure));
-		}
+			: this(scheduler) => Closure = closure ?? throw new ArgumentNullException(nameof(closure));
 
 		protected ReaderWriterLockSlim? SyncLock = new();
 
@@ -118,8 +112,7 @@ namespace Open.Threading
 			InternalTask?.Wait();
 		}
 
-		public bool EnsureActive(bool once = false)
-			=> EnsureProcess(once).IsActive();
+		public bool EnsureActive(bool once = false) => EnsureProcess(once).IsActive();
 
 		// ReSharper disable once MemberCanBeProtected.Global
 		public virtual T Progress
