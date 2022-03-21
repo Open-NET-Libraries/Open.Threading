@@ -1,7 +1,5 @@
 ﻿using Open.Disposable;
-using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Threading;
 
 namespace Open.Threading;
 
@@ -95,7 +93,7 @@ public abstract class ContainerBase<T> : DisposableBase, IContainer<T>
 		AssertIsAlive();
 		var init = false;
 
-		var original = SyncLock.WriteValue(() =>
+		var original = SyncLock.Write(() =>
 		{
 			AssertIsAlive();
 
@@ -153,7 +151,7 @@ public abstract class ContainerBase<T> : DisposableBase, IContainer<T>
 	public bool GetValue(out T value)
 	{
 		var hv = false;
-		value = SyncLock.ReadValue(() =>
+		value = SyncLock.Read(() =>
 		{
 			var r = GetValue();
 			hv = HasValue;
@@ -169,17 +167,18 @@ public abstract class ContainerBase<T> : DisposableBase, IContainer<T>
 	public T GetOrUpdate(Func<T> valueFactory)
 	{
 		var result = _value;
-		if (valueFactory is not null)
-		{
-			SyncLock.ReadWriteConditional((_) =>
+		if (valueFactory is null)
+			return result;
+
+		SyncLock.ReadWriteConditional(
+			(_) =>
 			{
 				AssertIsAlive();
 				result = _value;
 				return !HasValue;
-			}, () =>
-				SetValue(result = valueFactory())
-			);
-		}
+			},
+			() => SetValue(result = valueFactory())
+		);
 		return result;
 	}
 
@@ -226,7 +225,7 @@ public class Container<T> : ContainerBase<T>
 	public Func<T>? ValueFactory
 	{
 		get => _valueFactory;
-		set => SyncLock.WriteValue(() => _valueFactory = value);
+		set => SyncLock.Write(() => _valueFactory = value);
 	}
 
 	public void EnsureValueFactory(Func<T> valueFactory, bool ensuredIfValuePresent = false)
@@ -241,7 +240,7 @@ public class Container<T> : ContainerBase<T>
 		}
 	}
 
-	protected override T Eval() => SyncLock.ReadValue(_valueFactory ?? base.Eval);
+	protected override T Eval() => SyncLock.Read(_valueFactory ?? base.Eval);
 
 	protected override void OnDispose()
 	{
@@ -264,10 +263,11 @@ public class ContainerLight<T> : Container<T>
 	public ContainerLight(Func<T> valueFactory)
 		: base(valueFactory) { }
 
-	protected override T Eval() => SyncLock.ReadValue(() =>
-											 {
-												 var result = base.Eval();
-												 ValueFactory = null;
-												 return result;
-											 });
+	protected override T Eval()
+		=> SyncLock.Read(() =>
+		{
+			var result = base.Eval();
+			ValueFactory = null;
+			return result;
+		});
 }

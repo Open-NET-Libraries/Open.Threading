@@ -1,6 +1,4 @@
 ﻿using Open.Disposable;
-using System;
-using System.Threading;
 
 namespace Open.Threading;
 
@@ -81,12 +79,13 @@ public class ModificationSynchronizer : DisposableBase, IModificationSynchronize
 
 	public bool Modifying(Func<bool> action) => Modifying(null, action);
 
-	public bool Modifying(Action action, bool assumeChange = false) => Modifying(() =>
-																							 {
-																								 var ver = _version; // Capture the version so that if changes occur indirectly...
-																								 action();
-																								 return assumeChange || ver != _version;
-																							 });
+	public bool Modifying(Action action, bool assumeChange = false)
+		=> Modifying(() =>
+		{
+			int ver = _version; // Capture the version so that if changes occur indirectly...
+			action();
+			return assumeChange || ver != _version;
+		});
 
 	public virtual bool Modifying(Func<bool>? condition, Func<bool> action)
 	{
@@ -94,13 +93,14 @@ public class ModificationSynchronizer : DisposableBase, IModificationSynchronize
 		if (condition is not null && !condition())
 			return false;
 
-		var ver = _version; // Capture the version so that if changes occur indirectly...
+        int ver = _version; // Capture the version so that if changes occur indirectly...
 		Interlocked.Increment(ref _modifyingDepth);
-		var modified = action();
+        bool modified = action();
 		if (modified) IncrementVersion();
 		// At zero depth and version change? Signal.
 		if (Interlocked.Decrement(ref _modifyingDepth) == 0 && ver != _version)
 			SignalModified();
+
 		return modified;
 	}
 
@@ -137,7 +137,7 @@ public sealed class SimpleLockingModificationSynchronizer : ModificationSynchron
 
 	public override bool Modifying(Func<bool>? condition, Func<bool> action)
 	{
-		var modified = false;
+        bool modified = false;
 		ThreadSafety.LockConditional(
 			_sync,
 			() => AssertIsAlive() && (condition is null || condition()),
@@ -149,9 +149,11 @@ public sealed class SimpleLockingModificationSynchronizer : ModificationSynchron
 	public override bool Modifying<T>(ref T target, T newValue)
 	{
 		AssertIsAlive();
-		if (target is null ? newValue is null : target.Equals(newValue)) return false;
+		if (target is null ? newValue is null : target.Equals(newValue))
+			return false;
 
-		lock (_sync) return base.Modifying(ref target, newValue);
+		lock (_sync)
+			return base.Modifying(ref target, newValue);
 	}
 }
 
@@ -173,7 +175,7 @@ public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 		base.OnDispose();
 		IDisposable? s = null;
 		// OnDispose() is only called once so _sync cannot be null at this point.
-		if (!_sync!.Write(() => s = Cleanup(), 10 /* Give any cleanup a chance. */ ))
+		if (!_sync!.TryWrite(10  /* Give any cleanup a chance. */, () => s = Cleanup() ))
 		{
 			s = Cleanup();
 		}
@@ -186,75 +188,49 @@ public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 	public override void Reading(Action action)
 	{
 		AssertIsAlive();
-		var sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
+        ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 		sync.Read(action);
 	}
 
 	public override T Reading<T>(Func<T> action)
 	{
 		AssertIsAlive();
-		var sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
-		return sync.ReadValue(action);
+        ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
+		return sync.Read(action);
 	}
 
 	public override bool Modifying(Func<bool>? condition, Func<bool> action)
 	{
 		AssertIsAlive();
-		var sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
+        ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 
-		// Try and early invalidate.
-		if (condition is not null && !sync.ReadValue(condition))
-			return false;
+        return (condition is null || sync.Read(condition)) // Try and early invalidate.
+			&& sync.WriteConditional(
+				() => AssertIsAlive() && (condition is null || condition()),
+				() => base.Modifying(null, action));
+    }
 
-		var modified = false;
-		sync.ReadUpgradeable(() =>
-		{
-			AssertIsAlive();
-			if (condition is null || condition())
-			{
-				modified = sync.WriteValue(() => base.Modifying(null, action));
-			}
-		});
-		return modified;
-	}
+    public override bool Modifying<T>(ref T target, T newValue)
+    {
+        AssertIsAlive();
+        if (target is null ? newValue is null : target.Equals(newValue)) return false;
 
-	public override bool Modifying<T>(ref T target, T newValue)
-	{
-		AssertIsAlive();
+        ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
+        // Note, there's no need for _modifyingDepth recursion tracking here.
+        using UpgradableReadLock readLock = sync.UpgradableReadLock();
+        AssertIsAlive();
+
+        //var ver = _version; // Capture the version so that if changes occur indirectly...
 		if (target is null ? newValue is null : target.Equals(newValue)) return false;
 
-		var sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
-		bool changed;
-		try
-		{
-			// Note, there's no need for _modifyingDepth recursion tracking here.
-			sync.EnterUpgradeableReadLock();
-			AssertIsAlive();
+        using (WriteLock writeLock = sync.WriteLock())
+        {
+            IncrementVersion();
+            target = newValue;
+        }
 
-			//var ver = _version; // Capture the version so that if changes occur indirectly...
-			changed = !(target is null ? newValue is null : target.Equals(newValue));
-
-			if (changed)
-			{
-				try
-				{
-					sync.EnterWriteLock();
-					IncrementVersion();
-					target = newValue;
-				}
-				finally
-				{
-					sync.ExitWriteLock();
-				}
-
-				// Events will be triggered but this thread will still have the upgradable read.
-				SignalModified();
-			}
-		}
-		finally
-		{
-			sync.ExitUpgradeableReadLock();
-		}
-		return changed;
-	}
+        // Events will be triggered but this thread will still have the upgradable read.
+        SignalModified();
+        return true;
+    }
 }

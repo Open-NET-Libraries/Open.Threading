@@ -1,8 +1,5 @@
 ﻿using Open.Disposable;
-using System;
 using System.Diagnostics.Contracts;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Open.Threading;
 
@@ -81,7 +78,7 @@ public class AsyncProcess<T> : DisposableBase
 	protected virtual Task EnsureProcess(bool once, TimeSpan? timeAllowedBeforeRefresh = null)
 	{
 		Task? task = null;
-		SyncLock!.ReadWriteConditionalOptimized(
+		SyncLock!.ReadWriteConditional(
 			_ =>
 			{
 				task = InternalTask;

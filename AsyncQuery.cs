@@ -1,6 +1,4 @@
-﻿using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Threading.Tasks;
+﻿using System.Diagnostics.CodeAnalysis;
 
 namespace Open.Threading.Tasks;
 
@@ -30,7 +28,7 @@ public class AsyncQuery<TResult> : AsyncProcess
 	{
 		Task<TResult>? task = null;
 
-		SyncLock!.ReadWriteConditionalOptimized(
+		SyncLock!.ReadWriteConditional(
 			_ =>
 			{
 				task = InternalTaskValued;
@@ -110,7 +108,8 @@ public class AsyncQuery<TResult> : AsyncProcess
 																						 IsLatestAvailable = true;
 																					 });
 
-	public virtual void OverrideLatest(TResult value, Func<TResult, TResult, bool> useNewValueEvaluator, DateTime? completed = null) => SyncLock!.ReadWriteConditionalOptimized(
+	public virtual void OverrideLatest(TResult value, Func<TResult, TResult, bool> useNewValueEvaluator, DateTime? completed = null)
+		=> SyncLock!.ReadWriteConditional(
 			(_) => useNewValueEvaluator(_latest, value),
 			() =>
 			{
@@ -129,7 +128,7 @@ public class AsyncQuery<TResult> : AsyncProcess
 
 	public bool WaitForRunningToComplete(TimeSpan? waitForCurrentTimeout = null)
 	{
-		var task = SyncLock!.ReadValue(() => InternalTaskValued);
+		var task = SyncLock!.Read(() => InternalTaskValued);
 		if (task is null) return false;
 		if (waitForCurrentTimeout.HasValue)
 			task.Wait(waitForCurrentTimeout.Value);
@@ -142,7 +141,7 @@ public class AsyncQuery<TResult> : AsyncProcess
 	{
 		get
 		{
-			var task = SyncLock!.ReadValue(() => InternalTaskValued);
+			var task = SyncLock!.Read(() => InternalTaskValued);
 			return task is null ? GetRunningValue() : task.Result;
 		}
 	}
@@ -168,7 +167,7 @@ public class AsyncQuery<TResult> : AsyncProcess
 	{
 		var result = default(TResult);
 		var resultComplete = DateTime.MinValue;
-		var isReady = SyncLock!.ReadValue(() =>
+		var isReady = SyncLock!.Read(() =>
 		{
 			result = _latest;
 			resultComplete = LatestCompleted;
