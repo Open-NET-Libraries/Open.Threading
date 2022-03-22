@@ -260,3 +260,4 @@ paket-files/
 __pycache__/
 *.pyc
 /nuget.config
+/Benchmarking/BenchmarkDotNet.Artifacts/results

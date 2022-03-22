@@ -5,7 +5,9 @@ VisualStudioVersion = 17.1.32210.238
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Open.Threading", "source\Open.Threading.csproj", "{7E8DFAB3-24B4-41F8-AA3E-AA9A0AA7D7A6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Open.Threading.Tests", "..\tests\Open.Threading.Tests.csproj", "{A3BC9107-6091-470F-9049-8ADD3F43CFB4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Open.Threading.Tests", "..\tests\Open.Threading.Tests.csproj", "{A3BC9107-6091-470F-9049-8ADD3F43CFB4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Open.Threading.Benchmarking", "Benchmarking\Open.Threading.Benchmarking.csproj", "{A28E7459-E82B-4F3B-847A-2249CBD4E412}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{A3BC9107-6091-470F-9049-8ADD3F43CFB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A3BC9107-6091-470F-9049-8ADD3F43CFB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A3BC9107-6091-470F-9049-8ADD3F43CFB4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A28E7459-E82B-4F3B-847A-2249CBD4E412}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A28E7459-E82B-4F3B-847A-2249CBD4E412}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A28E7459-E82B-4F3B-847A-2249CBD4E412}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A28E7459-E82B-4F3B-847A-2249CBD4E412}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
