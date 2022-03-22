@@ -30,7 +30,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
-		<PackageReference Include="Open.Threading.ReadWriteHelper" Version="2.0.1" />
+		<PackageReference Include="Open.Threading.ReadWriteHelper" Version="2.0.2" />
 	</ItemGroup>
 
 	<ItemGroup>
