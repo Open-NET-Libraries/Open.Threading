@@ -93,9 +93,9 @@ public class ModificationSynchronizer : DisposableBase, IModificationSynchronize
 		if (condition is not null && !condition())
 			return false;
 
-        int ver = _version; // Capture the version so that if changes occur indirectly...
+		int ver = _version; // Capture the version so that if changes occur indirectly...
 		Interlocked.Increment(ref _modifyingDepth);
-        bool modified = action();
+		bool modified = action();
 		if (modified) IncrementVersion();
 		// At zero depth and version change? Signal.
 		if (Interlocked.Decrement(ref _modifyingDepth) == 0 && ver != _version)
@@ -137,7 +137,7 @@ public sealed class SimpleLockingModificationSynchronizer : ModificationSynchron
 
 	public override bool Modifying(Func<bool>? condition, Func<bool> action)
 	{
-        bool modified = false;
+		bool modified = false;
 		ThreadSafety.LockConditional(
 			_sync,
 			() => AssertIsAlive() && (condition is null || condition()),
@@ -175,7 +175,7 @@ public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 		base.OnDispose();
 		IDisposable? s = null;
 		// OnDispose() is only called once so _sync cannot be null at this point.
-		if (!_sync!.TryWrite(10  /* Give any cleanup a chance. */, () => s = Cleanup() ))
+		if (!_sync!.TryWrite(10  /* Give any cleanup a chance. */, () => s = Cleanup()))
 		{
 			s = Cleanup();
 		}
@@ -188,49 +188,49 @@ public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 	public override void Reading(Action action)
 	{
 		AssertIsAlive();
-        ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
+		ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 		sync.Read(action);
 	}
 
 	public override T Reading<T>(Func<T> action)
 	{
 		AssertIsAlive();
-        ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
+		ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 		return sync.Read(action);
 	}
 
 	public override bool Modifying(Func<bool>? condition, Func<bool> action)
 	{
 		AssertIsAlive();
-        ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
+		ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 
-        return (condition is null || sync.Read(condition)) // Try and early invalidate.
+		return (condition is null || sync.Read(condition)) // Try and early invalidate.
 			&& sync.WriteConditional(
 				() => AssertIsAlive() && (condition is null || condition()),
 				() => base.Modifying(null, action));
-    }
+	}
 
-    public override bool Modifying<T>(ref T target, T newValue)
-    {
-        AssertIsAlive();
-        if (target is null ? newValue is null : target.Equals(newValue)) return false;
-
-        ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
-        // Note, there's no need for _modifyingDepth recursion tracking here.
-        using UpgradableReadLock readLock = sync.UpgradableReadLock();
-        AssertIsAlive();
-
-        //var ver = _version; // Capture the version so that if changes occur indirectly...
+	public override bool Modifying<T>(ref T target, T newValue)
+	{
+		AssertIsAlive();
 		if (target is null ? newValue is null : target.Equals(newValue)) return false;
 
-        using (WriteLock writeLock = sync.WriteLock())
-        {
-            IncrementVersion();
-            target = newValue;
-        }
+		ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
+		// Note, there's no need for _modifyingDepth recursion tracking here.
+		using UpgradableReadLock readLock = sync.UpgradableReadLock();
+		AssertIsAlive();
 
-        // Events will be triggered but this thread will still have the upgradable read.
-        SignalModified();
-        return true;
-    }
+		//var ver = _version; // Capture the version so that if changes occur indirectly...
+		if (target is null ? newValue is null : target.Equals(newValue)) return false;
+
+		using (WriteLock writeLock = sync.WriteLock())
+		{
+			IncrementVersion();
+			target = newValue;
+		}
+
+		// Events will be triggered but this thread will still have the upgradable read.
+		SignalModified();
+		return true;
+	}
 }

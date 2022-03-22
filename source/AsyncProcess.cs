@@ -1,4 +1,5 @@
 ﻿using Open.Disposable;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 
 namespace Open.Threading;
@@ -6,52 +7,30 @@ namespace Open.Threading;
 public class AsyncProcess<T> : DisposableBase
 		where T : new()
 {
-	protected AsyncProcess(TaskScheduler? scheduler) => Scheduler = scheduler ?? TaskScheduler.Default;
+	protected AsyncProcess(TaskScheduler? scheduler)
+		=> Scheduler = scheduler ?? TaskScheduler.Default;
 
 	public AsyncProcess(Action<T> closure, TaskScheduler? scheduler = null)
-		: this(scheduler) => Closure = closure ?? throw new ArgumentNullException(nameof(closure));
+		: this(scheduler)
+		=> Closure = closure ?? throw new ArgumentNullException(nameof(closure));
 
+	// Used to help prevent recusion.
 	protected ReaderWriterLockSlim? SyncLock = new();
 
-	protected TaskScheduler? Scheduler
-	{
-		get;
-		private set;
-	}
+	protected TaskScheduler? Scheduler { get; private set; }
 
-	protected Action<T>? Closure
-	{
-		get;
-		private set;
-	}
+	protected Action<T>? Closure { get; private set; }
 
-	protected Task? InternalTask
-	{
-		get;
-		set;
-	}
+	protected Task? InternalTask { get; set; }
 
-	public virtual DateTime LatestCompleted
-	{
-		get;
-		protected set;
-	}
+	public virtual DateTime LatestCompleted { get; protected set; }
 
-	public Exception? LastFault
-	{
-		get;
-		protected set;
-	}
+	public Exception? LastFault { get; protected set; }
 
-	public int Count
-	{
-		get;
-		protected set;
-	}
+	public int Count { get; protected set; }
 
 	public bool HasBeenRun => Count != 0;
 
-	//long _processCount = 0;
 	protected virtual void Process(object progress)
 	{
 		if (progress is null)
@@ -61,7 +40,6 @@ public class AsyncProcess<T> : DisposableBase
 		var p = (T)progress;
 		try
 		{
-			//Contract.Assert(Interlocked.Increment(ref _processCount) == 1);
 			Closure!(p);
 			SyncLock!.Write(() => LatestCompleted = DateTime.Now);
 		}
@@ -69,10 +47,6 @@ public class AsyncProcess<T> : DisposableBase
 		{
 			SyncLock!.Write(() => LastFault = ex);
 		}
-		//finally
-		//{
-		//	//Interlocked.Decrement(ref _processCount);
-		//}
 	}
 
 	protected virtual Task EnsureProcess(bool once, TimeSpan? timeAllowedBeforeRefresh = null)
@@ -98,12 +72,19 @@ public class AsyncProcess<T> : DisposableBase
 	}
 
 	// ReSharper disable once MemberCanBeProtected.Global
-	public bool IsRunning => InternalTask?.IsActive() ?? false;
+	public bool IsRunning
+		=> InternalTask?.IsActive() ?? false;
 
 	public void Wait(bool once = true)
 	{
 		EnsureActive(once);
 		InternalTask?.Wait();
+	}
+
+	public Task WaitAsync(bool once = true)
+	{
+		EnsureActive(once);
+		return InternalTask ?? Task.CompletedTask;
 	}
 
 	public bool EnsureActive(bool once = false) => EnsureProcess(once).IsActive();
@@ -156,7 +137,7 @@ public class AsyncProcess : AsyncProcess<Progress>
 
 			if (!IsRunning) return result;
 			var p = Progress;
-			result += "\n" + p.EstimatedTimeLeftString + " remaining";
+			result += $"\n{p.EstimatedTimeLeftString} remaining";
 
 			return result;
 		}
@@ -167,7 +148,6 @@ public class AsyncProcess : AsyncProcess<Progress>
 		var p = (Progress)progress;
 		try
 		{
-			//Contract.Assert(Interlocked.Increment(ref _processCount) == 1);
 			Closure!(p);
 		}
 		catch (Exception ex)
@@ -175,9 +155,5 @@ public class AsyncProcess : AsyncProcess<Progress>
 			SyncLock!.Write(() => LatestCompleted = DateTime.Now);
 			p.Failed(ex.ToString());
 		}
-		//finally
-		//{
-		//	//Interlocked.Decrement(ref _processCount);
-		//}
 	}
 }

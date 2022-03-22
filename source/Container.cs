@@ -230,17 +230,18 @@ public class Container<T> : ContainerBase<T>
 
 	public void EnsureValueFactory(Func<T> valueFactory, bool ensuredIfValuePresent = false)
 	{
-		if (_valueFactory is null || ensuredIfValuePresent && HasValue)
+		if (_valueFactory is not null && (!ensuredIfValuePresent || !HasValue))
+			return;
+
+		SyncLock.Write(() =>
 		{
-			SyncLock.Write(() =>
-			{
-				if (_valueFactory is null || ensuredIfValuePresent && HasValue)
-					_valueFactory = valueFactory;
-			});
-		}
+			if (_valueFactory is null || ensuredIfValuePresent && HasValue)
+				_valueFactory = valueFactory;
+		});
 	}
 
-	protected override T Eval() => SyncLock.Read(_valueFactory ?? base.Eval);
+	protected override T Eval()
+		=> SyncLock.Read(_valueFactory ?? base.Eval);
 
 	protected override void OnDispose()
 	{

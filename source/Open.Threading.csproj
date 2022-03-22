@@ -30,7 +30,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
-		<PackageReference Include="Open.Threading.ReadWriteHelper" Version="2.0.0-preview1" />
+		<PackageReference Include="Open.Threading.ReadWriteHelper" Version="2.0.1" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -38,11 +38,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Remove=".git" />
-		<None Remove=".gitignore" />
-		<None Include="logo.png">
+		<None Include="../logo.png">
 			<Pack>True</Pack>
-			<PackagePath></PackagePath>
+			<PackagePath>/</PackagePath>
 		</None>
 	</ItemGroup>
 
