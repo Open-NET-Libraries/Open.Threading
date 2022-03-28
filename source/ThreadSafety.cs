@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
-using System.IO;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Open.Threading;
 
@@ -14,27 +10,11 @@ namespace Open.Threading;
 /// </summary>
 public static class ThreadSafety
 {
-	public static bool IsValidSyncObject(object syncObject) => syncObject switch // Avoid the lock object being immutable...
-	{
-		string _ or
-		ValueType _ or
-		null => false,
-		_ => true,
-	};
+	public static bool IsValidSyncObject(object? syncObject)
+		=> Threading.Lock.IsValidSyncObject(syncObject);
 
-	internal static void ValidateSyncObject(object syncObject)
-	{
-		if (syncObject is null)
-			throw new ArgumentNullException(nameof(syncObject));
-		if (!IsValidSyncObject(syncObject))
-			throw new ArgumentException("Is not valid sync object.", nameof(syncObject));
-	}
-
-	internal static void ValidateMillisecondsTimeout(int? millisecondsTimeout)
-	{
-		if ((millisecondsTimeout ?? 0) < 0)
-			throw new ArgumentOutOfRangeException(nameof(millisecondsTimeout), millisecondsTimeout, "Cannot be a negative value.");
-	}
+	internal static object AssertSyncObject(object? syncObject)
+		=> Threading.Lock.AssertSyncObject(syncObject);
 
 	public static bool InterlockedExchangeIfLessThanComparison(ref int location, int comparison, int newValue)
 	{
@@ -61,124 +41,64 @@ public static class ThreadSafety
 		return true;
 	}
 
-	/// <summary>
-	/// Applies a lock on the syncObject before executing the provided Action.
-	/// This is more of a sample method and is direclty equivalient to using the lock keyword and is meant to be the equivalent of the below method without a timeout...
-	/// </summary>
-	public static void Lock<TSync>(TSync syncObject, Action closure) where TSync : class
+	/// <inheritdoc/>
+	public static void Lock<TSync>(TSync syncObject, Action closure, LockTimeout timeout = default)
+		where TSync : class
 	{
-		ValidateSyncObject(syncObject);
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
+		if (closure is null) throw new ArgumentNullException(nameof(closure));
 		Contract.EndContractBlock();
 
-		lock (syncObject)
-			closure();
+		using var @lock = new Lock(syncObject, timeout, true);
+		Debug.Assert(@lock.LockHeld);
+		closure();
 	}
 
-	/// <summary>
-	/// Applies a lock on the syncObject before executing the provided Action.
-	/// This is more of a sample method and is direclty equivalient to using the lock keyword and is meant to be the equivalent of the below method without a timeout...
-	/// </summary>
 	/// <returns>The action of the query.</returns>
-	public static T Lock<TSync, T>(TSync syncObject, Func<T> closure) where TSync : class
+	/// <inheritdoc cref="Lock{TSync}(TSync, Action, LockTimeout)"/>
+	public static T Lock<TSync, T>(TSync syncObject, Func<T> closure, LockTimeout timeout = default)
+		where TSync : class
 	{
-		ValidateSyncObject(syncObject);
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
+		if (closure is null) throw new ArgumentNullException(nameof(closure));
 		Contract.EndContractBlock();
 
-		lock (syncObject)
-			return closure();
+		using var @lock = new Lock(syncObject, timeout, true);
+		Debug.Assert(@lock.LockHeld);
+		return closure();
 	}
 
 	/// <summary>
 	/// Applies a lock on the syncObject before executing the provided Action with a timeout.
-	/// Throws a TimeoutException if throwsOnTimeout is true (default) and a lock could not be aquired.
 	/// </summary>
+	/// <remarks>Throws a TimeoutException if throwsOnTimeout is true (default) and a lock could not be aquired.</remarks>
 	/// <param name="syncObject">Object used for synchronization.</param>
 	/// <param name="closure">The query to execute once a lock is acquired.</param>
-	/// <param name="millisecondsTimeout">Maximum time allowed to wait for a lock.</param>
-	/// <param name="throwsOnTimeout">If true and a timeout is reached, then a TimeoutException is thrown.
+	/// <param name="timeout">Maximum time allowed to wait for a lock.</param>
+	/// <param name="throwsOnTimeout">
+	/// If true and a timeout is reached, then a TimeoutException is thrown.
 	/// If false and a timeout is reached, then it this method returns false and allows the caller to handle the failed lock.</param>
 	/// <returns>
 	/// True if a lock was acquired and the Action executed.
 	/// False if throwsOnTimeout is false and could not acquire a lock.
 	/// </returns>
-	public static bool Lock<TSync>(TSync syncObject, Action closure, int millisecondsTimeout, bool throwsOnTimeout = true) where TSync : class
+	public static bool TryLock<TSync>(TSync syncObject, Action closure, LockTimeout timeout, bool throwsOnTimeout = false)
+		where TSync : class
 	{
-		ValidateSyncObject(syncObject);
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
-		if (millisecondsTimeout < 0)
-			throw new ArgumentOutOfRangeException(nameof(closure), millisecondsTimeout, "Cannot be a negative value.");
+		if (closure is null) throw new ArgumentNullException(nameof(closure));
 		Contract.EndContractBlock();
 
-		var lockTaken = false;
-		try
-		{
-			Monitor.TryEnter(syncObject, millisecondsTimeout, ref lockTaken);
-			if (lockTaken)
-			{
-				closure();
-			}
-			else
-			{
-				if (throwsOnTimeout)
-					throw new TimeoutException("Could not gain a lock within the timeout specified.");
-			}
-		}
-		finally
-		{
-			if (lockTaken)
-				Monitor.Exit(syncObject);
-		}
-
-		return lockTaken;
+		using var @lock = new Lock(syncObject, timeout, throwsOnTimeout);
+		if (!@lock.LockHeld) return false;
+		closure();
+		return true;
 	}
 
-	/// <summary>
-	/// Attempts to acquire a lock on the syncObject before executing the provided Action with an optional timeout.
-	/// </summary>
-	/// <param name="syncObject">Object used for synchronization.</param>
-	/// <param name="closure">The query to execute once a lock is acquired.</param>
-	/// <param name="millisecondsTimeout">Maximum time allowed to wait for a lock.</param>
-	/// <returns>
-	/// True if a lock was acquired and the Action executed.
-	/// </returns>
-	public static bool TryLock<TSync>(TSync syncObject, Action closure, int millisecondsTimeout = 0) where TSync : class
-	{
-		ValidateSyncObject(syncObject);
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
-		if (millisecondsTimeout < 0)
-			throw new ArgumentOutOfRangeException(nameof(closure), millisecondsTimeout, "Cannot be a negative value.");
-		Contract.EndContractBlock();
-
-		var lockTaken = false;
-		try
-		{
-			if (millisecondsTimeout == 0)
-				Monitor.TryEnter(syncObject, ref lockTaken);
-			else
-				Monitor.TryEnter(syncObject, millisecondsTimeout, ref lockTaken);
-
-			if (lockTaken)
-				closure();
-		}
-		finally
-		{
-			if (lockTaken)
-				Monitor.Exit(syncObject);
-		}
-
-		return lockTaken;
-	}
+	/// <inheritdoc cref="TryLock{TSync}(TSync, Action, LockTimeout)"/>
+	public static bool TryLock<TSync>(TSync syncObject, Action closure) where TSync : class
+		=> TryLock(syncObject, closure, 0, false);
 
 	/// <summary>
 	/// Sychronizes executing the Action only if the condition is true.
 	/// </summary>
-	///
 	/// <param name="syncObject">Object used for synchronization.</param>
 	/// <param name="condition">Logic function to execute DCL pattern.  Passes in a boolean that is true for when a lock is held.  The return value indicates if a lock is still needed and the query should be executed.
 	/// Note: Passing a boolean to the condition when a lock is acquired helps if it is important to the cosuming logic to avoid recursive locking.</param>
@@ -186,9 +106,10 @@ public static class ThreadSafety
 	/// <returns>
 	/// True if the Action executed.
 	/// </returns>
-	public static bool LockConditional<TSync>(TSync syncObject, Func<bool, bool> condition, Action closure) where TSync : class
+	public static bool LockConditional<TSync>(TSync syncObject, Func<bool, bool> condition, Action closure)
+		where TSync : class
 	{
-		ValidateSyncObject(syncObject);
+		AssertSyncObject(syncObject);
 		if (condition is null)
 			throw new ArgumentNullException(nameof(condition));
 		if (closure is null)
@@ -214,9 +135,10 @@ public static class ThreadSafety
 	/// <returns>
 	/// True if the Action executed.
 	/// </returns>
-	public static bool LockConditional<TSync>(TSync syncObject, Func<bool> condition, Action closure) where TSync : class
+	public static bool LockConditional<TSync>(TSync syncObject, Func<bool> condition, Action closure)
+		where TSync : class
 	{
-		ValidateSyncObject(syncObject);
+		AssertSyncObject(syncObject);
 		if (condition is null)
 			throw new ArgumentNullException(nameof(condition));
 		if (closure is null)
@@ -241,78 +163,39 @@ public static class ThreadSafety
 	/// <param name="condition">Logic function to execute DCL pattern.  Passes in a boolean that is true for when a lock is held.  The return value indicates if a lock is still needed and the query should be executed.
 	/// Note: Passing a boolean to the condition when a lock is acquired helps if it is important to the cosuming logic to avoid recursive locking.</param>
 	/// <param name="closure">The closure to execute once a lock is acquired.  Only executes if the condition returns true.</param>
-	/// <param name="millisecondsTimeout">Maximum time allowed to wait for a lock.</param>
+	/// <param name="timeout">Maximum time allowed to wait for a lock.</param>
 	/// <param name="throwsOnTimeout">If true and a timeout is reached, then a TimeoutException is thrown.</param>
 	///
 	/// <returns>
 	/// True if a lock was acquired and the Action executed.
 	/// False if throwsOnTimeout is false and could not acquire a lock.
 	/// </returns>
-	public static bool LockConditional<TSync>(TSync syncObject, Func<bool, bool> condition, Action closure, int millisecondsTimeout, bool throwsOnTimeout = true) where TSync : class
+	public static bool LockConditional<TSync>(TSync syncObject, Func<bool, bool> condition, Action closure, LockTimeout timeout, bool throwsOnTimeout = true)
+		where TSync : class
 	{
-		ValidateSyncObject(syncObject);
 		if (condition is null)
 			throw new ArgumentNullException(nameof(condition));
 		if (closure is null)
 			throw new ArgumentNullException(nameof(closure));
-		ValidateMillisecondsTimeout(millisecondsTimeout);
 		Contract.EndContractBlock();
 
-		var lockTaken = false;
-		if (condition(false))
-		{
-			try
-			{
-				Monitor.TryEnter(syncObject, millisecondsTimeout, ref lockTaken);
-				if (lockTaken)
-				{
-					if (condition(true))
-					{
-						closure();
-						return true;
-					}
-				}
-				else
-				{
-					if (throwsOnTimeout)
-						throw new TimeoutException("Could not gain a lock within the timeout specified.");
-				}
-			}
-			finally
-			{
-				if (lockTaken) Monitor.Exit(syncObject);
-			}
-		}
+		if (!condition(false)) return false;
+		using var @lock = new Lock(syncObject, timeout, throwsOnTimeout);
+		Debug.Assert(!throwsOnTimeout || @lock.LockHeld);
 
-		return lockTaken;
+		if (!@lock.LockHeld || !condition(true)) return false;
+		closure();
+		return true;
 	}
 
-	/// <summary>
-	/// Sychronizes executing the Action only if the condition is true and using a timeout.
-	/// Throws a TimeoutException if throwsOnTimeout is true (default) and a lock was needed but could not be aquired.
-	/// </summary>
-	///
-	/// <param name="syncObject">Object used for synchronization.</param>
-	/// <param name="condition">Logic function to execute DCL pattern.  The return value indicates if a lock is still needed and the query should be executed.</param>
-	/// <param name="closure">The closure to execute once a lock is acquired.  Only executes if the condition returns true.</param>
-	/// <param name="millisecondsTimeout">Maximum time allowed to wait for a lock.</param>
-	/// <param name="throwsOnTimeout">If true and a timeout is reached, then a TimeoutException is thrown.</param>
-	///
-	/// <returns>
-	/// True if a lock was acquired and the Action executed.
-	/// False if throwsOnTimeout is false and could not acquire a lock.
-	/// </returns>
-	public static bool LockConditional<TSync>(TSync syncObject, Func<bool> condition, Action closure, int millisecondsTimeout, bool throwsOnTimeout = true) where TSync : class
+	/// <inheritdoc cref="LockConditional{TSync}(TSync, Func{bool, bool}, Action, LockTimeout, bool)" />
+	public static bool LockConditional<TSync>(TSync syncObject, Func<bool> condition, Action closure, LockTimeout timeout, bool throwsOnTimeout = true)
+		where TSync : class
 	{
-		ValidateSyncObject(syncObject);
-		if (condition is null)
-			throw new ArgumentNullException(nameof(condition));
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
-		ValidateMillisecondsTimeout(millisecondsTimeout);
+		if (condition is null) throw new ArgumentNullException(nameof(condition));
 		Contract.EndContractBlock();
 
-		return LockConditional(syncObject, (_) => condition(), closure, millisecondsTimeout, throwsOnTimeout);
+		return LockConditional(syncObject, (_) => condition(), closure, timeout, throwsOnTimeout);
 	}
 
 	/// <summary>
@@ -320,9 +203,10 @@ public static class ThreadSafety
 	/// If the target value is not set it sets the target to the query response.
 	/// LazyIntializer will also work but this does not have the constraints of LazyInitializer.
 	/// </summary>
-	public static T LockIfNull<TSync, T>(TSync syncObject, ref T target, Func<T> closure) where TSync : class
+	public static T LockIfNull<TSync, T>(TSync syncObject, ref T target, Func<T> closure)
+		where TSync : class
 	{
-		ValidateSyncObject(syncObject);
+		AssertSyncObject(syncObject);
 		if (closure is null)
 			throw new ArgumentNullException(nameof(closure));
 		Contract.EndContractBlock();
@@ -357,44 +241,20 @@ public static class ThreadSafety
 
 	private static ReadWriteHelper<object> GetReadWriteHelper(object key)
 	{
-		if (key is null)
-			throw new ArgumentNullException(nameof(key));
+		AssertSyncObject(key);
 		Contract.EndContractBlock();
 		var result = _sychronizeReadWriteRegistry.GetOrCreateValue(key);
 		return result ?? throw new NullReferenceException();
 	}
 
-	/// <summary>
-	/// Manages a read-only conditional operation and resultant write locked operation of any target and specifc key of that object.
-	/// </summary>
-	/// <typeparam name="TSync">Type of the object sync context.</typeparam>
-	/// <param name="syncObject">The main object that defines the synchronization context.</param>
-	/// <param name="key">The key that represents what value will change.</param>
-	/// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
-	/// <param name="closure">The function to execute while under a write lock if the condition remains true.</param>
-	/// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
-	/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
-	/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
-	/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
+	/// <inheritdoc cref="SynchronizeReadWrite{TSync, T}(TSync, object, ref T, Func{bool, bool}, Func{T}, LockTimeout, bool)"/>
 	public static bool SynchronizeReadWrite<TSync>(
 		TSync syncObject,
-		object key, Func<LockType, bool> condition, Action closure,
-		int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
-	{
-		ValidateSyncObject(syncObject);
-		if (key is null)
-			throw new ArgumentNullException(nameof(key));
-		if (condition is null)
-			throw new ArgumentNullException(nameof(condition));
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
-		ValidateMillisecondsTimeout(millisecondsTimeout);
-		Contract.EndContractBlock();
-
-		return GetReadWriteHelper(syncObject)
-				.ReadWriteConditionalOptimized(key,
-					condition, closure, millisecondsTimeout, throwsOnTimeout);
-	}
+		object key, Func<bool, bool> condition, Action closure,
+		LockTimeout timeout = default, bool throwsOnTimeout = true)
+		where TSync : class
+		=> GetReadWriteHelper(syncObject).Context(key)
+			.TryReadWriteConditional(timeout, condition, closure, throwsOnTimeout);
 
 	/// <summary>
 	/// Manages a read-only conditional operation and resultant write locked operation of any target and specifc key of that object.
@@ -406,29 +266,16 @@ public static class ThreadSafety
 	/// <param name="result">The reference to become the result if a result is acquired from the closure during write.</param>
 	/// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
 	/// <param name="closure">The function to execute while under a write lock if the condition remains true.  'result' becomes the return value.</param>
-	/// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
-	/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+	/// <param name="timeout">An optional value to allow for timeout.</param>
+	/// <param name="throwsOnTimeout">If true, and a timeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
 	/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
 	/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
 	public static bool SynchronizeReadWrite<TSync, T>(
 		TSync syncObject,
-		object key, ref T result, Func<LockType, bool> condition, Func<T> closure,
-		int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
-	{
-		ValidateSyncObject(syncObject);
-		if (key is null)
-			throw new ArgumentNullException(nameof(key));
-		if (condition is null)
-			throw new ArgumentNullException(nameof(condition));
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
-		ValidateMillisecondsTimeout(millisecondsTimeout);
-		Contract.EndContractBlock();
-
-		return GetReadWriteHelper(syncObject)
-				.ReadWriteConditionalOptimized(key, ref result,
-					condition, closure, millisecondsTimeout, throwsOnTimeout);
-	}
+		object key, ref T result, Func<bool, bool> condition, Func<T> closure,
+		LockTimeout timeout = default, bool throwsOnTimeout = true) where TSync : class
+		=> GetReadWriteHelper(syncObject).Context(key)
+			.TryReadWriteConditional(timeout, ref result, condition, closure, throwsOnTimeout);
 
 	/// <summary>
 	/// <para>Manages a read-only conditional operation and resultant write locked operation of any target and specifc key of that object.</para>
@@ -442,30 +289,28 @@ public static class ThreadSafety
 	/// <param name="key">The key that represents what value will change.</param>
 	/// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
 	/// <param name="closure">The function to execute while under a write lock if the condition remains true.</param>
-	/// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
-	/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+	/// <param name="timeout">An optional value to allow for timeout.</param>
+	/// <param name="throwsOnTimeout">If true, and a timeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
 	/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
 	/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
 	public static bool SynchronizeReadWriteKeyAndObject<TSync>(
 		TSync syncObject,
-		object key, Func<LockType, bool> condition, Action closure,
-		int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
+		object key, Func<bool, bool> condition, Action closure,
+		LockTimeout timeout = default, bool throwsOnTimeout = true) where TSync : class
 	{
-		ValidateSyncObject(syncObject);
-		if (key is null)
-			throw new ArgumentNullException(nameof(key));
 		if (condition is null)
 			throw new ArgumentNullException(nameof(condition));
 		if (closure is null)
 			throw new ArgumentNullException(nameof(closure));
-		ValidateMillisecondsTimeout(millisecondsTimeout);
 		Contract.EndContractBlock();
 
+		// Step 1: get a read-lock on the key (context) before attempting to lock the syncObject.
 		return SynchronizeReadWrite(syncObject, key,
-			_ => SynchronizeRead(syncObject, () => condition(LockType.Read), millisecondsTimeout, throwsOnTimeout),
-			() => SynchronizeReadWrite(syncObject, condition, closure, millisecondsTimeout, throwsOnTimeout),
-			millisecondsTimeout,
-			throwsOnTimeout);
+			// Step 2: get a read lock on the sync object and test the condition.
+			_ => SynchronizeRead(syncObject, () => condition(false), timeout, throwsOnTimeout),
+			// Step 3: the lock on the key has been upgraded to write, signal to the collection that a change is being made and everyone should wait.
+			() => SynchronizeReadWrite(syncObject, condition, closure, timeout, throwsOnTimeout),
+			timeout, throwsOnTimeout);
 	}
 
 	/// <summary>
@@ -482,23 +327,16 @@ public static class ThreadSafety
 	/// <param name="result">The reference to become the result if a result is acquired from the closure during write.</param>
 	/// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
 	/// <param name="closure">The function to execute while under a write lock if the condition remains true.  'result' becomes the return value.</param>
-	/// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
-	/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+	/// <param name="timeout">An optional value to allow for timeout.</param>
+	/// <param name="throwsOnTimeout">If true, and a timeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
 	/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
 	/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
 	public static bool SynchronizeReadWriteKeyAndObject<TSync, T>(
 		TSync syncObject,
-		object key, ref T result, Func<LockType, bool> condition, Func<T> closure,
-		int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
+		object key, ref T result, Func<bool, bool> condition, Func<T> closure,
+		LockTimeout timeout = default, bool throwsOnTimeout = true) where TSync : class
 	{
-		ValidateSyncObject(syncObject);
-		if (key is null)
-			throw new ArgumentNullException(nameof(key));
-		if (condition is null)
-			throw new ArgumentNullException(nameof(condition));
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
-		ValidateMillisecondsTimeout(millisecondsTimeout);
+		if (closure is null) throw new ArgumentNullException(nameof(closure));
 		Contract.EndContractBlock();
 
 		var r = result;
@@ -509,7 +347,7 @@ public static class ThreadSafety
 			{
 				r = closure();
 				written = true;
-			}, millisecondsTimeout, throwsOnTimeout);
+			}, timeout, throwsOnTimeout);
 
 		if (written)
 			result = r;
@@ -524,25 +362,15 @@ public static class ThreadSafety
 	/// <param name="syncObject">The main object that defines the synchronization context.</param>
 	/// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
 	/// <param name="closure">The function to execute while under a write lock if the condition remains true.</param>
-	/// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
-	/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+	/// <param name="timeout">An optional value to allow for timeout.</param>
+	/// <param name="throwsOnTimeout">If true, and a timeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
 	/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
 	/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
 	public static bool SynchronizeReadWrite<TSync>(
 		TSync syncObject,
-		Func<LockType, bool> condition, Action closure,
-		int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
-	{
-		ValidateSyncObject(syncObject);
-		if (condition is null)
-			throw new ArgumentNullException(nameof(condition));
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
-		ValidateMillisecondsTimeout(millisecondsTimeout);
-		Contract.EndContractBlock();
-
-		return SynchronizeReadWrite(syncObject, syncObject, condition, closure, millisecondsTimeout, throwsOnTimeout);
-	}
+		Func<bool, bool> condition, Action closure,
+		LockTimeout timeout = default, bool throwsOnTimeout = true) where TSync : class
+		=> SynchronizeReadWrite(syncObject, syncObject, condition, closure, timeout, throwsOnTimeout);
 
 	/// <summary>
 	/// Manages a read-only conditional operation and resultant write locked operation of any target.
@@ -553,25 +381,15 @@ public static class ThreadSafety
 	/// <param name="result">The reference to become the result if a result is acquired from the closure during write.</param>
 	/// <param name="condition">The condition function that if true, allows procedurally allows for a write lock.  If at any time this function is false, the closure will not execute.</param>
 	/// <param name="closure">The function to execute while under a write lock if the condition remains true.  'result' becomes the return value.</param>
-	/// <param name="millisecondsTimeout">An optional value to allow for timeout.</param>
-	/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+	/// <param name="timeout">An optional value to allow for timeout.</param>
+	/// <param name="throwsOnTimeout">If true, and a timeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
 	/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
 	/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
 	public static bool SynchronizeReadWrite<TSync, T>(
 		TSync syncObject,
-		ref T result, Func<LockType, bool> condition, Func<T> closure,
-		int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
-	{
-		ValidateSyncObject(syncObject);
-		if (condition is null)
-			throw new ArgumentNullException(nameof(condition));
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
-		ValidateMillisecondsTimeout(millisecondsTimeout);
-		Contract.EndContractBlock();
-
-		return SynchronizeReadWrite(syncObject, syncObject, ref result, condition, closure, millisecondsTimeout, throwsOnTimeout);
-	}
+		ref T result, Func<bool, bool> condition, Func<T> closure,
+		LockTimeout timeout = default, bool throwsOnTimeout = true) where TSync : class
+		=> SynchronizeReadWrite(syncObject, syncObject, ref result, condition, closure, timeout, throwsOnTimeout);
 
 	/// <summary>
 	/// Manages a read-only operation of any target and the provided key and returns the value from the closure.
@@ -581,23 +399,12 @@ public static class ThreadSafety
 	/// <param name="syncObject">The main object that defines the synchronization context.</param>
 	/// <param name="key">The key that represents what value being read from.</param>
 	/// <param name="closure">The function to execute while under a read lock.</param>
-	/// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
+	/// <param name="timeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a timeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
 	/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
 	/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-	public static T SynchronizeRead<TSync, T>(TSync syncObject, object key, Func<T> closure, int? millisecondsTimeout = null) where TSync : class
-	{
-		ValidateSyncObject(syncObject);
-		if (key is null)
-			throw new ArgumentNullException(nameof(key));
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
-		ValidateMillisecondsTimeout(millisecondsTimeout);
-		Contract.EndContractBlock();
-
-		return GetReadWriteHelper(syncObject)
-			.ReadValue(key,
-				closure, millisecondsTimeout);
-	}
+	public static T SynchronizeRead<TSync, T>(TSync syncObject, object key, Func<T> closure, LockTimeout timeout = default) where TSync : class
+		=> GetReadWriteHelper(syncObject)
+			.Context(key).Read(timeout, closure);
 
 	/// <summary>
 	/// Manages a read-only operation of any target and returns the value from the closure.
@@ -606,19 +413,11 @@ public static class ThreadSafety
 	/// <typeparam name="T">Type of the result.</typeparam>
 	/// <param name="syncObject">The main object that defines the synchronization context.</param>
 	/// <param name="closure">The function to execute while under a read lock.</param>
-	/// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
+	/// <param name="timeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a timeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
 	/// <returns>The value from the closure.</returns>
 	/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-	public static T SynchronizeRead<TSync, T>(TSync syncObject, Func<T> closure, int? millisecondsTimeout = null) where TSync : class
-	{
-		ValidateSyncObject(syncObject);
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
-		ValidateMillisecondsTimeout(millisecondsTimeout);
-		Contract.EndContractBlock();
-
-		return SynchronizeRead(syncObject, syncObject, closure, millisecondsTimeout);
-	}
+	public static T SynchronizeRead<TSync, T>(TSync syncObject, Func<T> closure, LockTimeout timeout = default) where TSync : class
+		=> SynchronizeRead(syncObject, syncObject, closure, timeout);
 
 	/// <summary>
 	/// Manages a read-only operation of any target and the provided key.
@@ -627,24 +426,13 @@ public static class ThreadSafety
 	/// <param name="syncObject">The main object that defines the synchronization context.</param>
 	/// <param name="key">The key that represents what value being read from.</param>
 	/// <param name="closure">The function to execute while under a read lock.</param>
-	/// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
-	/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+	/// <param name="timeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a timeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
+	/// <param name="throwsOnTimeout">If true, and a timeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
 	/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
 	/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-	public static bool SynchronizeRead<TSync>(TSync syncObject, object key, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
-	{
-		ValidateSyncObject(syncObject);
-		if (key is null)
-			throw new ArgumentNullException(nameof(key));
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
-		ValidateMillisecondsTimeout(millisecondsTimeout);
-		Contract.EndContractBlock();
-
-		return GetReadWriteHelper(syncObject)
-			.Read(key,
-				closure, millisecondsTimeout, throwsOnTimeout);
-	}
+	public static bool SynchronizeRead<TSync>(TSync syncObject, object key, Action closure, LockTimeout timeout = default, bool throwsOnTimeout = true) where TSync : class
+		=> GetReadWriteHelper(syncObject).Context(key)
+			.TryRead(timeout, closure, throwsOnTimeout);
 
 	/// <summary>
 	/// Manages a read-only operation of any target.
@@ -652,20 +440,12 @@ public static class ThreadSafety
 	/// <typeparam name="TSync">Type of the object sync context.</typeparam>
 	/// <param name="syncObject">The main object that defines the synchronization context.</param>
 	/// <param name="closure">The function to execute while under a read lock.</param>
-	/// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
-	/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+	/// <param name="timeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a timeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
+	/// <param name="throwsOnTimeout">If true, and a timeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
 	/// <returns>The value from the closure.</returns>
 	/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-	public static bool SynchronizeRead<TSync>(TSync syncObject, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
-	{
-		ValidateSyncObject(syncObject);
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
-		ValidateMillisecondsTimeout(millisecondsTimeout);
-		Contract.EndContractBlock();
-
-		return SynchronizeRead(syncObject, syncObject, closure, millisecondsTimeout, throwsOnTimeout);
-	}
+	public static bool SynchronizeRead<TSync>(TSync syncObject, Action closure, LockTimeout timeout = default, bool throwsOnTimeout = true) where TSync : class
+		=> SynchronizeRead(syncObject, syncObject, closure, timeout, throwsOnTimeout);
 
 	/// <summary>
 	/// Manages a write lock operation of any target and the provided key.
@@ -674,24 +454,13 @@ public static class ThreadSafety
 	/// <param name="syncObject">The main object that defines the synchronization context.</param>
 	/// <param name="key">The key that represents what value being written to.</param>
 	/// <param name="closure">The function to execute while under a write lock.</param>
-	/// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
-	/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+	/// <param name="timeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a timeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
+	/// <param name="throwsOnTimeout">If true, and a timeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
 	/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
 	/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-	public static bool SynchronizeWrite<TSync>(TSync syncObject, object key, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
-	{
-		ValidateSyncObject(syncObject);
-		if (key is null)
-			throw new ArgumentNullException(nameof(key));
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
-		ValidateMillisecondsTimeout(millisecondsTimeout);
-		Contract.EndContractBlock();
-
-		return GetReadWriteHelper(syncObject)
-			.Write(key,
-				closure, millisecondsTimeout, throwsOnTimeout);
-	}
+	public static bool SynchronizeWrite<TSync>(TSync syncObject, object key, Action closure, LockTimeout timeout = default, bool throwsOnTimeout = true) where TSync : class
+		=> GetReadWriteHelper(syncObject).Context(key)
+			.TryWrite(timeout, closure, throwsOnTimeout);
 
 	/// <summary>
 	/// Manages a write lock operation of any target.
@@ -699,20 +468,12 @@ public static class ThreadSafety
 	/// <typeparam name="TSync">Type of the object sync context.</typeparam>
 	/// <param name="syncObject">The main object that defines the synchronization context.</param>
 	/// <param name="closure">The function to execute while under a write lock.</param>
-	/// <param name="millisecondsTimeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a millisecondsTimeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
-	/// <param name="throwsOnTimeout">If true, and a millisecondsTimeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
+	/// <param name="timeout">An optional value to allow for timeout. Because this returns a value then there must be a way to signal that a value in a read lock was not possible.  If a timeout is provided a TimeoutException will be thrown if the timeout is reached.</param>
+	/// <param name="throwsOnTimeout">If true, and a timeout value is provided, a TimeoutException will be thrown if the timeout is reached the instead of this method returning false.</param>
 	/// <returns>True if a lock is aquired.  False if throwsOnTimeout is false and was unable to acquire a lock.</returns>
 	/// <exception cref="TimeoutException">Unable to acquire a lock.</exception>
-	public static bool SynchronizeWrite<TSync>(TSync syncObject, Action closure, int? millisecondsTimeout = null, bool throwsOnTimeout = true) where TSync : class
-	{
-		ValidateSyncObject(syncObject);
-		if (closure is null)
-			throw new ArgumentNullException(nameof(closure));
-		ValidateMillisecondsTimeout(millisecondsTimeout);
-		Contract.EndContractBlock();
-
-		return SynchronizeWrite(syncObject, syncObject, closure, millisecondsTimeout, throwsOnTimeout);
-	}
+	public static bool SynchronizeWrite<TSync>(TSync syncObject, Action closure, LockTimeout timeout = default, bool throwsOnTimeout = true) where TSync : class
+		=> SynchronizeWrite(syncObject, syncObject, closure, timeout, throwsOnTimeout);
 
 	/// <summary>
 	/// <para>A class that can be used as a locking context for an object and then selectively locks individual keys.</para>
@@ -764,12 +525,14 @@ public static class ThreadSafety
 		/// Sychronizes executing the Action based on the cacheKey provided using a timeout.
 		/// Throws a TimeoutException if throwsOnTimeout is true (default) and a lock could not be aquired.
 		/// </summary>
-		public bool Lock(TKey key, Action closure, int millisecondsTimeout, bool throwsOnTimeout = true) => ThreadSafety.Lock(this[key], closure, millisecondsTimeout, throwsOnTimeout);
+		public void Lock(TKey key, Action closure, LockTimeout timeout)
+			=> ThreadSafety.Lock(this[key], closure, timeout);
 
 		/// <summary>
 		/// Attempts to sychronize executing the Action based on the cacheKey provided using a timeout.
 		/// </summary>
-		public bool TryLock(TKey key, Action closure, int millisecondsTimeout) => ThreadSafety.TryLock(this[key], closure, millisecondsTimeout);
+		public bool TryLock(TKey key, Action closure, LockTimeout timeout, bool throwsOnTimeout = true)
+			=> ThreadSafety.TryLock(this[key], closure, timeout, throwsOnTimeout);
 
 		/// <summary>
 		/// Sychronizes executing the Action only if the condition is true based on the cacheKey provided.
@@ -780,7 +543,7 @@ public static class ThreadSafety
 		/// Sychronizes executing the Action only if the condition is true based on the cacheKey provided using a timeout.
 		/// Throws a TimeoutException if throwsOnTimeout is true (default) and a lock could not be aquired.
 		/// </summary>
-		public bool LockConditional(TKey key, Func<bool> condition, Action closure, int millisecondsTimeout, bool throwsOnTimeout) => ThreadSafety.LockConditional(this[key], condition, closure, millisecondsTimeout, throwsOnTimeout);
+		public bool LockConditional(TKey key, Func<bool> condition, Action closure, LockTimeout timeout, bool throwsOnTimeout) => ThreadSafety.LockConditional(this[key], condition, closure, timeout, throwsOnTimeout);
 	}
 
 	/// <inheritdoc />
@@ -821,18 +584,20 @@ public static class ThreadSafety
 		}
 
 		static ReadWriteHelper<string>? _instance;
-		private static ReadWriteHelper<string> Instance => LazyInitializer.EnsureInitialized(ref _instance, () => new ReadWriteHelper<string>())!;
+		private static ReadWriteHelper<string> Instance
+			=> LazyInitializer.EnsureInitialized(ref _instance, () => new ReadWriteHelper<string>())!;
 
 		/// <summary>
 		/// Manages registering a ReaderWriterLockSlim an synchronizing the provided query write access.
 		/// </summary>
 		public static bool WriteTo(string path, Action closure,
-			int? millisecondsTimeout = null, bool throwsOnTimeout = false)
+			LockTimeout timeout = default, bool throwsOnTimeout = false)
 		{
 			ValidatePath(path);
 			Contract.EndContractBlock();
 
-			return Instance.Write(path, closure, millisecondsTimeout, throwsOnTimeout);
+			return Instance.Context(path)
+				.TryWrite(timeout, closure, throwsOnTimeout);
 		}
 
 		/// <summary>
@@ -841,7 +606,7 @@ public static class ThreadSafety
 		private static void WriteToInternal(string path, Action<FileStream> closure,
 			int retries = DEFAULT_RETRIES,
 			int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
-			int? millisecondsTimeout = null,
+			LockTimeout timeout = default,
 			bool throwsOnTimeout = false,
 			FileMode mode = FileMode.OpenOrCreate,
 			FileAccess access = FileAccess.Write,
@@ -856,7 +621,7 @@ public static class ThreadSafety
 				using var fs = Unsafe.GetFileStream(path, retries, millisecondsRetryDelay, mode, access, share);
 				closure(fs);
 			},
-			millisecondsTimeout, throwsOnTimeout);
+			timeout, throwsOnTimeout);
 		}
 
 		/// <summary>
@@ -865,8 +630,9 @@ public static class ThreadSafety
 		public static void WriteTo(string path, Action<FileStream> closure,
 			int retries = DEFAULT_RETRIES,
 			int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
-			int? millisecondsTimeout = null,
-			bool throwsOnTimeout = false) => WriteToInternal(path, closure, retries, millisecondsRetryDelay, millisecondsTimeout, throwsOnTimeout);
+			LockTimeout timeout = default,
+			bool throwsOnTimeout = false)
+			=> WriteToInternal(path, closure, retries, millisecondsRetryDelay, timeout, throwsOnTimeout);
 
 		/// <summary>
 		/// Manages file stream read access and retries.
@@ -874,8 +640,9 @@ public static class ThreadSafety
 		public static void AppendTo(string path, Action<FileStream> closure,
 			int retries = DEFAULT_RETRIES,
 			int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
-			int? millisecondsTimeout = null,
-			bool throwsOnTimeout = false) => WriteToInternal(path, closure, retries, millisecondsRetryDelay, millisecondsTimeout, throwsOnTimeout, FileMode.Append);
+			LockTimeout timeout = default,
+			bool throwsOnTimeout = false)
+			=> WriteToInternal(path, closure, retries, millisecondsRetryDelay, timeout, throwsOnTimeout, FileMode.Append);
 
 		/// <summary>
 		/// Manages file stream read access and retries.
@@ -883,7 +650,7 @@ public static class ThreadSafety
 		public static void AppendLineTo(string path, string text,
 			int retries = DEFAULT_RETRIES,
 			int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
-			int? millisecondsTimeout = null,
+			LockTimeout timeout = default,
 			bool throwsOnTimeout = false)
 		{
 			if (text is null)
@@ -895,31 +662,35 @@ public static class ThreadSafety
 				using var sw = new StreamWriter(fs);
 				sw.WriteLine(text);
 				sw.Flush();
-			}, retries, millisecondsRetryDelay, millisecondsTimeout, throwsOnTimeout);
+			}, retries, millisecondsRetryDelay, timeout, throwsOnTimeout);
 		}
 
 		/// <summary>
 		/// Manages registering a ReaderWriterLockSlim and synchronizing the provided query write access.
 		/// </summary>
-		public static T WriteTo<T>(string path, Func<T> closure,
-			int? millisecondsTimeout = null)
+		public static T WriteTo<T>(
+			string path, Func<T> closure,
+			LockTimeout timeout = default)
 		{
 			ValidatePath(path);
 			Contract.EndContractBlock();
 
-			return Instance.WriteValue(path, closure, millisecondsTimeout);
+			return Instance.Context(path)
+				.Write(timeout, closure);
 		}
 
 		/// <summary>
 		/// Manages registering a ReaderWriterLockSlim and synchronizing the provided query read access.
 		/// </summary>
 		public static bool ReadFrom(string path, Action closure,
-			int? millisecondsTimeout = null, bool throwsOnTimeout = false)
+			LockTimeout timeout = default, bool throwsOnTimeout = false)
 		{
 			ValidatePath(path);
 			Contract.EndContractBlock();
 
-			return Instance.Read(path, closure, millisecondsTimeout, throwsOnTimeout);
+			return Instance
+				.Context(path)
+				.TryRead(timeout, closure, throwsOnTimeout);
 		}
 
 		/// <summary>
@@ -927,12 +698,14 @@ public static class ThreadSafety
 		/// </summary>
 		public static bool ReadFromUpgradeable(
 			string path, Action closure,
-			int? millisecondsTimeout = null, bool throwsOnTimeout = false)
+			LockTimeout timeout = default, bool throwsOnTimeout = false)
 		{
 			ValidatePath(path);
 			Contract.EndContractBlock();
 
-			return Instance.ReadUpgradeable(path, closure, millisecondsTimeout, throwsOnTimeout);
+			return Instance
+				.Context(path)
+				.TryReadUpgradable(timeout, closure, throwsOnTimeout);
 		}
 
 		/// <summary>
@@ -940,17 +713,19 @@ public static class ThreadSafety
 		/// </summary>
 		public static bool ReadFromUpgradeable<T>(
 			out T result, string path, Func<T> closure,
-			int? millisecondsTimeout = null, bool throwsOnTimeout = false)
+			LockTimeout timeout = default, bool throwsOnTimeout = false)
 		{
 			ValidatePath(path);
 			Contract.EndContractBlock();
 
-			return Instance.ReadUpgradeable(path, out result, closure, millisecondsTimeout, throwsOnTimeout);
+			return Instance
+				.Context(path)
+				.TryReadUpgradable(timeout, out result, closure, throwsOnTimeout);
 		}
 
 		public static bool WriteToIfNotExists(
 			string path, Action closure,
-			int? millisecondsTimeout = null, bool throwsOnTimeout = false)
+			LockTimeout timeout = default, bool throwsOnTimeout = false)
 		{
 			var writtenTo = false;
 			if (!Exists(path))
@@ -958,7 +733,7 @@ public static class ThreadSafety
 				ReadFromUpgradeable(out writtenTo, path, () =>
 				{
 					if (System.IO.File.Exists(path)) return false;
-					WriteTo(path, closure, millisecondsTimeout, throwsOnTimeout);
+					WriteTo(path, closure, timeout, throwsOnTimeout);
 					return true;
 				});
 			}
@@ -969,12 +744,13 @@ public static class ThreadSafety
 		/// Manages registering a ReaderWriterLockSlim an synchronizing the provided query read access.
 		/// </summary>
 		public static T ReadFrom<T>(string path, Func<T> closure,
-			int? millisecondsTimeout = null)
+			LockTimeout timeout = default)
 		{
 			ValidatePath(path);
 			Contract.EndContractBlock();
 
-			return Instance.ReadValue(path, closure, millisecondsTimeout);
+			return Instance
+				.Context(path).Read(timeout, closure);
 		}
 
 		private const int DEFAULT_RETRIES = 4;
@@ -986,7 +762,7 @@ public static class ThreadSafety
 		public static void ReadFrom(string path, Action<FileStream> closure,
 			int retries = DEFAULT_RETRIES,
 			int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
-			int? millisecondsTimeout = null,
+			LockTimeout timeout = default,
 			bool throwsOnTimeout = false)
 		{
 			ValidatePath(path);
@@ -999,7 +775,7 @@ public static class ThreadSafety
 				using var fs = Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay);
 				closure(fs);
 			},
-			millisecondsTimeout, throwsOnTimeout);
+			timeout, throwsOnTimeout);
 		}
 
 		/// <summary>
@@ -1008,7 +784,7 @@ public static class ThreadSafety
 		public static T ReadFrom<T>(string path, Func<FileStream, T> closure,
 			int retries = DEFAULT_RETRIES,
 			int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
-			int? millisecondsTimeout = null)
+			LockTimeout timeout = default)
 		{
 			if (closure is null)
 				throw new ArgumentNullException(nameof(closure));
@@ -1018,16 +794,17 @@ public static class ThreadSafety
 			{
 				using var fs = Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay);
 				return closure(fs);
-			}, millisecondsTimeout);
+			}, timeout);
 		}
 
 		public static string ReadToString(string path, int retries = DEFAULT_RETRIES,
 			int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
-			int? millisecondsTimeout = null) => ReadFrom(path, (fs) =>
-															  {
-																  using var reader = new StreamReader(fs);
-																  return reader.ReadToEnd();
-															  }, retries, millisecondsRetryDelay, millisecondsTimeout);
+			LockTimeout timeout = default)
+			=> ReadFrom(path, (fs) =>
+				{
+					using var reader = new StreamReader(fs);
+					return reader.ReadToEnd();
+				}, retries, millisecondsRetryDelay, timeout);
 
 		public static class Unsafe
 		{
@@ -1114,28 +891,29 @@ public static class ThreadSafety
 		public static FileStream GetFileStreamForRead(string path,
 			int retries = DEFAULT_RETRIES,
 			int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
-			int? millisecondsTimeout = null) => ReadFrom(path, () => Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay), millisecondsTimeout);
+			LockTimeout timeout = default)
+			=> ReadFrom(path, () => Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay), timeout);
 
 		/// <summary>
 		/// Uses registered read access conditions to determine if a file exists.
 		/// </summary>
 		public static bool Exists(string path,
-			int? millisecondsTimeout = null)
+			LockTimeout timeout = default)
 		{
 			ValidatePath(path);
 
-			return ReadFrom(path, () => System.IO.File.Exists(path), millisecondsTimeout);
+			return ReadFrom(path, () => System.IO.File.Exists(path), timeout);
 		}
 
 		public static void EnsureDirectory(string path,
-			int? millisecondsTimeout = null)
+			LockTimeout timeout = default)
 		{
 			ValidatePath(path);
 			Contract.EndContractBlock();
 
 			path = Path.GetDirectoryName(path);
 
-			if (!ReadFrom(path, () => Directory.Exists(path), millisecondsTimeout))
+			if (!ReadFrom(path, () => Directory.Exists(path), timeout))
 			{
 				ReadFromUpgradeable(path, () =>
 				{
@@ -1149,7 +927,7 @@ public static class ThreadSafety
 							// ReSharper disable once AssignNullToNotNullAttribute
 							return Directory.CreateDirectory(path);
 						},
-						millisecondsTimeout);
+						timeout);
 				});
 			}
 		}
