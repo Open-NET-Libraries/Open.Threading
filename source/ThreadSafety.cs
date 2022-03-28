@@ -584,7 +584,8 @@ public static class ThreadSafety
 		}
 
 		static ReadWriteHelper<string>? _instance;
-		private static ReadWriteHelper<string> Instance => LazyInitializer.EnsureInitialized(ref _instance, () => new ReadWriteHelper<string>())!;
+		private static ReadWriteHelper<string> Instance
+			=> LazyInitializer.EnsureInitialized(ref _instance, () => new ReadWriteHelper<string>())!;
 
 		/// <summary>
 		/// Manages registering a ReaderWriterLockSlim an synchronizing the provided query write access.
@@ -630,7 +631,8 @@ public static class ThreadSafety
 			int retries = DEFAULT_RETRIES,
 			int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
 			LockTimeout timeout = default,
-			bool throwsOnTimeout = false) => WriteToInternal(path, closure, retries, millisecondsRetryDelay, timeout, throwsOnTimeout);
+			bool throwsOnTimeout = false)
+			=> WriteToInternal(path, closure, retries, millisecondsRetryDelay, timeout, throwsOnTimeout);
 
 		/// <summary>
 		/// Manages file stream read access and retries.
@@ -639,7 +641,8 @@ public static class ThreadSafety
 			int retries = DEFAULT_RETRIES,
 			int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
 			LockTimeout timeout = default,
-			bool throwsOnTimeout = false) => WriteToInternal(path, closure, retries, millisecondsRetryDelay, timeout, throwsOnTimeout, FileMode.Append);
+			bool throwsOnTimeout = false)
+			=> WriteToInternal(path, closure, retries, millisecondsRetryDelay, timeout, throwsOnTimeout, FileMode.Append);
 
 		/// <summary>
 		/// Manages file stream read access and retries.
@@ -796,11 +799,12 @@ public static class ThreadSafety
 
 		public static string ReadToString(string path, int retries = DEFAULT_RETRIES,
 			int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
-			LockTimeout timeout = default) => ReadFrom(path, (fs) =>
-															  {
-																  using var reader = new StreamReader(fs);
-																  return reader.ReadToEnd();
-															  }, retries, millisecondsRetryDelay, timeout);
+			LockTimeout timeout = default)
+			=> ReadFrom(path, (fs) =>
+				{
+					using var reader = new StreamReader(fs);
+					return reader.ReadToEnd();
+				}, retries, millisecondsRetryDelay, timeout);
 
 		public static class Unsafe
 		{
@@ -887,7 +891,8 @@ public static class ThreadSafety
 		public static FileStream GetFileStreamForRead(string path,
 			int retries = DEFAULT_RETRIES,
 			int millisecondsRetryDelay = DEFAULT_RETRYDELAY,
-			LockTimeout timeout = default) => ReadFrom(path, () => Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay), timeout);
+			LockTimeout timeout = default)
+			=> ReadFrom(path, () => Unsafe.GetFileStreamForRead(path, retries, millisecondsRetryDelay), timeout);
 
 		/// <summary>
 		/// Uses registered read access conditions to determine if a file exists.

@@ -28,13 +28,19 @@ public sealed class ReadOnlyModificationSynchronizer : IModificationSynchronizer
 
 	public T Reading<T>(Func<T> action) => action();
 
-	public bool Modifying(Action action, bool assumeChange = false) => throw new NotSupportedException("Synchronizer is read-only.");
+	private const string ReadOnlyMessage = "Synchronizer is read-only.";
 
-	public bool Modifying(Func<bool> action) => throw new NotSupportedException("Synchronizer is read-only.");
+	public bool Modifying(Action action, bool assumeChange = false)
+		=> throw new NotSupportedException(ReadOnlyMessage);
 
-	public bool Modifying(Func<bool> condition, Func<bool> action) => throw new NotSupportedException("Synchronizer is read-only.");
+	public bool Modifying(Func<bool> action)
+		=> throw new NotSupportedException(ReadOnlyMessage);
 
-	public bool Modifying<T>(ref T target, T newValue) => throw new NotSupportedException("Synchronizer is read-only.");
+	public bool Modifying(Func<bool> condition, Func<bool> action)
+		=> throw new NotSupportedException(ReadOnlyMessage);
+
+	public bool Modifying<T>(ref T target, T newValue)
+		=> throw new NotSupportedException(ReadOnlyMessage);
 
 	public void Poke()
 	{
@@ -75,9 +81,11 @@ public class ModificationSynchronizer : DisposableBase, IModificationSynchronize
 		return action();
 	}
 
-	protected void SignalModified() => Modified?.Invoke(this, EventArgs.Empty);
+	protected void SignalModified()
+		=> Modified?.Invoke(this, EventArgs.Empty);
 
-	public bool Modifying(Func<bool> action) => Modifying(null, action);
+	public bool Modifying(Func<bool> action)
+		=> Modifying(null, action);
 
 	public bool Modifying(Action action, bool assumeChange = false)
 		=> Modifying(() =>
@@ -188,21 +196,21 @@ public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 	public override void Reading(Action action)
 	{
 		AssertIsAlive();
-		ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
+		ReaderWriterLockSlim sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 		sync.Read(action);
 	}
 
 	public override T Reading<T>(Func<T> action)
 	{
 		AssertIsAlive();
-		ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
+		ReaderWriterLockSlim sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 		return sync.Read(action);
 	}
 
 	public override bool Modifying(Func<bool>? condition, Func<bool> action)
 	{
 		AssertIsAlive();
-		ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
+		ReaderWriterLockSlim sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 
 		return (condition is null || sync.Read(condition)) // Try and early invalidate.
 			&& sync.WriteConditional(
@@ -215,7 +223,7 @@ public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 		AssertIsAlive();
 		if (target is null ? newValue is null : target.Equals(newValue)) return false;
 
-		ReaderWriterLockSlim? sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
+		ReaderWriterLockSlim sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 		// Note, there's no need for _modifyingDepth recursion tracking here.
 		using UpgradableReadLock readLock = sync.UpgradableReadLock();
 		AssertIsAlive();
