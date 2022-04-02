@@ -52,7 +52,7 @@ public interface IContainer<T> : IContainValue<T>, IDisposable, IDisposalState /
 /// </summary>
 /// <typeparam name="T">The type to be contained.</typeparam>
 /// <inheritdoc cref="DisposableBase" />
-/// <inheritdoc cref="IContainer&lt;T&gt;" />
+/// <inheritdoc cref="IContainer{T}" />
 // ReSharper disable once InheritdocConsiderUsage
 public abstract class ContainerBase<T> : DisposableBase, IContainer<T>
 {
@@ -210,8 +210,8 @@ public abstract class ContainerBase<T> : DisposableBase, IContainer<T>
 
 /// <inheritdoc />
 /// <summary>
-/// Thread-Safe container class for allowing deferred delegates to create a missing source. Similar to Lazy&lt;TLock&gt;.
-/// This class is the same as ContainerLight&lt;TLock&gt; but never throws away it's scheduler and can be re-rendered at anytime.
+/// Thread-Safe container class for allowing deferred delegates to create a missing source. Similar to <see cref="Lazy{T}"/>.
+/// This class is the same as <see cref="ContainerLight{T}"/> but never throws away it's scheduler and can be re-rendered at anytime.
 /// </summary>
 /// <typeparam name="T">The type to be contained.</typeparam>
 public class Container<T> : ContainerBase<T>
@@ -253,7 +253,7 @@ public class Container<T> : ContainerBase<T>
 /// <inheritdoc />
 /// <summary>
 /// Thread-Safe container class for allowing deferred delegates to create a missing source.
-/// This class is the same as Container&lt;TLock&gt; but will only evaluate it's source delegate once and then release it.
+/// This class is the same as <see cref="Container{T}"/> but will only evaluate it's source delegate once and then release it.
 /// </summary>
 /// <typeparam name="T">The type to be contained.</typeparam>
 public class ContainerLight<T> : Container<T>
