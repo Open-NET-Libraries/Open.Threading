@@ -1,5 +1,4 @@
-﻿
-using Open.Disposable;
+﻿using Open.Disposable;
 
 namespace Open.Threading;
 
@@ -57,24 +56,24 @@ public abstract class ModificationSynchronizedBase : DisposableBase
 
 	void SetSyncSynced(IModificationSynchronizer? value)
 	{
-		if (_sync is ModificationSynchronizer sync)
-		{
-			if (sync.WasDisposed) return;
-
-			// Allow for wrap-up.
-			var owned = false;
-			sync.Modifying(() =>
-			{
-				owned = _syncOwned;
-				SetSync(value);
-				return false; // Prevent triggering a Modified event.
-			});
-			if (owned) sync.Dispose();
-		}
-		else
+		if (_sync is not ModificationSynchronizer sync)
 		{
 			SetSync(value);
+			return;
 		}
+
+		if (sync.WasDisposed) return;
+
+		// Allow for wrap-up.
+		var owned = false;
+		sync.Modifying(() =>
+		{
+			owned = _syncOwned;
+			SetSync(value);
+			return false; // Prevent triggering a Modified event.
+		});
+
+		if (owned) sync.Dispose();
 	}
 
 	protected override void OnDispose() => SetSyncSynced(null);
@@ -87,19 +86,18 @@ public abstract class ModificationSynchronizedBase : DisposableBase
 
 	public void Freeze()
 	{
-		if (_sync is ModificationSynchronizer sync)
+		if (_sync is not ModificationSynchronizer sync)
+			return;
+
+		// Allow for wrap-up.
+		sync.Modifying(() =>
 		{
-			// Allow for wrap-up.
-			sync.Modifying(() =>
-			{
-				// Swapping out the sync but won't dispose.  Allow GC to care for it.
-				if (SetSync(ReadOnlyModificationSynchronizer.Instance))
-				{
-					OnFrozen();
-				}
-				return false; // Prevent triggering a Modified event.
-			});
-		}
+			// Swapping out the sync but won't dispose.  Allow GC to care for it.
+			if (SetSync(ReadOnlyModificationSynchronizer.Instance))
+				OnFrozen();
+
+			return false; // Prevent triggering a Modified event.
+		});
 	}
 
 	protected virtual void OnFrozen()

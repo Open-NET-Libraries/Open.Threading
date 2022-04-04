@@ -1,4 +1,6 @@
 ﻿using Open.Disposable;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 namespace Open.Threading;
 
@@ -11,18 +13,52 @@ public interface IReadOnlyModificationSynchronizer
 
 public interface IModificationSynchronizer : IReadOnlyModificationSynchronizer
 {
-	bool Modifying(Func<bool> condition, Func<bool> action);
-	bool Modifying(Func<bool> action);
+	bool Modifying(out int version, Func<bool>? condition, Func<bool> action);
 
-	bool Modifying(Action action, bool assumeChange = false);
+	bool Modifying(out int version, Action action, bool assumeChange = false);
 
-	bool Modifying<T>(ref T target, T newValue);
+	bool Modifying<T>(out int version, ref T target, T newValue);
 
 	// If this is modifiable, it will increment the version.
-	void Poke();
+	int Poke();
 }
 
-public sealed class ReadOnlyModificationSynchronizer : IModificationSynchronizer
+[ExcludeFromCodeCoverage]
+public static class ModificationSynchronizerExtensions
+{
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool Modifying(
+		this IModificationSynchronizer synchronizer,
+		out int version, Func<bool> action)
+		=> synchronizer.Modifying(out version, null, action);
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool Modifying(
+		this IModificationSynchronizer synchronizer,
+		Func<bool> action)
+		=> synchronizer.Modifying(out _, null, action);
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool Modifying(
+		this IModificationSynchronizer synchronizer,
+		Func<bool>? condition, Func<bool> action)
+		=> synchronizer.Modifying(out _, condition, action);
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool Modifying(
+		this IModificationSynchronizer synchronizer,
+		Action action, bool assumeChange = false)
+		=> synchronizer.Modifying(out _, action, assumeChange);
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool Modifying<T>(
+		this IModificationSynchronizer synchronizer, 
+		ref T target, T newValue)
+		=> synchronizer.Modifying(out _, ref target, newValue);
+}
+
+public sealed class ReadOnlyModificationSynchronizer
+	: IModificationSynchronizer
 {
 	public void Reading(Action action) => action();
 
@@ -30,22 +66,20 @@ public sealed class ReadOnlyModificationSynchronizer : IModificationSynchronizer
 
 	private const string ReadOnlyMessage = "Synchronizer is read-only.";
 
-	public bool Modifying(Action action, bool assumeChange = false)
+	public bool Modifying(out int version, Action action, bool assumeChange = false)
 		=> throw new NotSupportedException(ReadOnlyMessage);
 
-	public bool Modifying(Func<bool> action)
+	public bool Modifying(out int version, Func<bool> action)
 		=> throw new NotSupportedException(ReadOnlyMessage);
 
-	public bool Modifying(Func<bool> condition, Func<bool> action)
+	public bool Modifying(out int version, Func<bool> condition, Func<bool> action)
 		=> throw new NotSupportedException(ReadOnlyMessage);
 
-	public bool Modifying<T>(ref T target, T newValue)
+	public bool Modifying<T>(out int version, ref T target, T newValue)
 		=> throw new NotSupportedException(ReadOnlyMessage);
 
-	public void Poke()
-	{
-		// Does nothing.
-	}
+	// Does nothing.
+	public int Poke() => 0;
 
 	static ReadOnlyModificationSynchronizer? _instance;
 	public static ReadOnlyModificationSynchronizer Instance => LazyInitializer.EnsureInitialized(ref _instance)!;
@@ -60,10 +94,13 @@ public class ModificationSynchronizer : DisposableBase, IModificationSynchronize
 
 	public int Version => _version;
 
-	// ReSharper disable once MemberCanBeProtected.Global
-	public void IncrementVersion() => Interlocked.Increment(ref _version);
+	public int IncrementVersion() => Interlocked.Increment(ref _version);
 
-	public void Poke() => Modifying(() => true);
+	public int Poke()
+	{
+		Modifying(out int version, null, () => true);
+		return version;
+	}
 
 	protected override void OnBeforeDispose() => Modified = null; // Clean events before swap.
 
@@ -84,40 +121,50 @@ public class ModificationSynchronizer : DisposableBase, IModificationSynchronize
 	protected void SignalModified()
 		=> Modified?.Invoke(this, EventArgs.Empty);
 
-	public bool Modifying(Func<bool> action)
-		=> Modifying(null, action);
-
-	public bool Modifying(Action action, bool assumeChange = false)
-		=> Modifying(() =>
+	public bool Modifying(out int version, Action action, bool assumeChange = false)
+		=> Modifying(out version, null, () =>
 		{
 			int ver = _version; // Capture the version so that if changes occur indirectly...
 			action();
 			return assumeChange || ver != _version;
 		});
 
-	public virtual bool Modifying(Func<bool>? condition, Func<bool> action)
+	public virtual bool Modifying(
+		out int version,
+		Func<bool>? condition,
+		Func<bool> action)
 	{
 		AssertIsAlive();
+		int ver = version = _version; // Capture the version so that if changes occur indirectly...
 		if (condition is not null && !condition())
 			return false;
 
-		int ver = _version; // Capture the version so that if changes occur indirectly...
 		Interlocked.Increment(ref _modifyingDepth);
 		bool modified = action();
-		if (modified) IncrementVersion();
-		// At zero depth and version change? Signal.
-		if (Interlocked.Decrement(ref _modifyingDepth) == 0 && ver != _version)
+		if (modified) version = IncrementVersion();
+		if (Interlocked.Decrement(ref _modifyingDepth) == 0
+		&& (modified || ver != _version))
+		{
+			// At zero depth and version change? Signal.
 			SignalModified();
+		}
 
 		return modified;
 	}
 
-	public virtual bool Modifying<T>(ref T target, T newValue)
+	public virtual bool Modifying<T>(
+		out int version,
+		ref T target,
+		T newValue)
 	{
 		AssertIsAlive();
-		if (target is null ? newValue is null : target.Equals(newValue)) return false;
+		if (target is null ? newValue is null : target.Equals(newValue))
+		{
+			version = _version;
+			return false;
+		}
 
-		IncrementVersion();
+		version = IncrementVersion();
 		target = newValue;
 		SignalModified();
 
@@ -143,25 +190,30 @@ public sealed class SimpleLockingModificationSynchronizer : ModificationSynchron
 		lock (_sync) return action();
 	}
 
-	public override bool Modifying(Func<bool>? condition, Func<bool> action)
+	public override bool Modifying(out int version, Func<bool>? condition, Func<bool> action)
 	{
 		bool modified = false;
+		int ver = _version;
 		ThreadSafety.LockConditional(
 			_sync,
 			() => AssertIsAlive() && (condition is null || condition()),
-			() => modified = base.Modifying(null, action)
+			() => modified = base.Modifying(out ver, null, action)
 		);
+		version = ver;
 		return modified;
 	}
 
-	public override bool Modifying<T>(ref T target, T newValue)
+	public override bool Modifying<T>(out int version, ref T target, T newValue)
 	{
 		AssertIsAlive();
 		if (target is null ? newValue is null : target.Equals(newValue))
+		{
+			version = _version;
 			return false;
+		}
 
 		lock (_sync)
-			return base.Modifying(ref target, newValue);
+			return base.Modifying(out version, ref target, newValue);
 	}
 }
 
@@ -207,21 +259,29 @@ public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 		return sync.Read(action);
 	}
 
-	public override bool Modifying(Func<bool>? condition, Func<bool> action)
+	public override bool Modifying(out int version, Func<bool>? condition, Func<bool> action)
 	{
 		AssertIsAlive();
 		ReaderWriterLockSlim sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 
-		return (condition is null || sync.Read(condition)) // Try and early invalidate.
+		var ver = _version;
+		var result =  (condition is null || sync.Read(condition)) // Try and early invalidate.
 			&& sync.WriteConditional(
 				() => AssertIsAlive() && (condition is null || condition()),
-				() => base.Modifying(null, action));
+				() => base.Modifying(out ver, null, action));
+
+		version = ver;
+		return result;
 	}
 
-	public override bool Modifying<T>(ref T target, T newValue)
+	public override bool Modifying<T>(out int version, ref T target, T newValue)
 	{
 		AssertIsAlive();
-		if (target is null ? newValue is null : target.Equals(newValue)) return false;
+		if (target is null ? newValue is null : target.Equals(newValue))
+		{
+			version = _version;
+			return false;
+		}
 
 		ReaderWriterLockSlim sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 		// Note, there's no need for _modifyingDepth recursion tracking here.
@@ -229,11 +289,15 @@ public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 		AssertIsAlive();
 
 		//var ver = _version; // Capture the version so that if changes occur indirectly...
-		if (target is null ? newValue is null : target.Equals(newValue)) return false;
+		if (target is null ? newValue is null : target.Equals(newValue))
+		{
+			version = _version;
+			return false;
+		}
 
 		using (WriteLock writeLock = sync.WriteLock())
 		{
-			IncrementVersion();
+			version = IncrementVersion();
 			target = newValue;
 		}
 
