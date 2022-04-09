@@ -13,7 +13,11 @@ public interface IReadOnlyModificationSynchronizer
 
 public interface IModificationSynchronizer : IReadOnlyModificationSynchronizer
 {
-	bool Modifying(out int version, Func<bool>? condition, Func<bool> action);
+	bool Modifying(
+		out int version,
+		Func<bool>? condition,
+		Func<bool> action,
+		Action<int>? onModify = null);
 
 	bool Modifying(out int version, Action action, bool assumeChange = false);
 
@@ -41,8 +45,10 @@ public static class ModificationSynchronizerExtensions
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool Modifying(
 		this IModificationSynchronizer synchronizer,
-		Func<bool>? condition, Func<bool> action)
-		=> synchronizer.Modifying(out _, condition, action);
+		Func<bool>? condition,
+		Func<bool> action,
+		Action<int>? onModify = null)
+		=> synchronizer.Modifying(out _, condition, action, onModify);
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool Modifying(
@@ -72,7 +78,7 @@ public sealed class ReadOnlyModificationSynchronizer
 	public bool Modifying(out int version, Func<bool> action)
 		=> throw new NotSupportedException(ReadOnlyMessage);
 
-	public bool Modifying(out int version, Func<bool> condition, Func<bool> action)
+	public bool Modifying(out int version, Func<bool>? condition, Func<bool> action, Action<int>? onModified = null)
 		=> throw new NotSupportedException(ReadOnlyMessage);
 
 	public bool Modifying<T>(out int version, ref T target, T newValue)
@@ -85,7 +91,8 @@ public sealed class ReadOnlyModificationSynchronizer
 	public static ReadOnlyModificationSynchronizer Instance => LazyInitializer.EnsureInitialized(ref _instance)!;
 }
 
-public class ModificationSynchronizer : DisposableBase, IModificationSynchronizer
+public class ModificationSynchronizer
+	: DisposableBase, IModificationSynchronizer
 {
 	public event EventHandler? Modified;
 
@@ -121,7 +128,10 @@ public class ModificationSynchronizer : DisposableBase, IModificationSynchronize
 	protected void SignalModified()
 		=> Modified?.Invoke(this, EventArgs.Empty);
 
-	public bool Modifying(out int version, Action action, bool assumeChange = false)
+	public bool Modifying(
+		out int version,
+		Action action,
+		bool assumeChange = false)
 		=> Modifying(out version, null, () =>
 		{
 			int ver = _version; // Capture the version so that if changes occur indirectly...
@@ -132,7 +142,8 @@ public class ModificationSynchronizer : DisposableBase, IModificationSynchronize
 	public virtual bool Modifying(
 		out int version,
 		Func<bool>? condition,
-		Func<bool> action)
+		Func<bool> action,
+		Action<int>? onModify = null)
 	{
 		AssertIsAlive();
 		int ver = version = _version; // Capture the version so that if changes occur indirectly...
@@ -149,6 +160,7 @@ public class ModificationSynchronizer : DisposableBase, IModificationSynchronize
 			SignalModified();
 		}
 
+		if (modified) onModify?.Invoke(version);
 		return modified;
 	}
 
@@ -170,6 +182,7 @@ public class ModificationSynchronizer : DisposableBase, IModificationSynchronize
 
 		return true;
 	}
+
 }
 
 public sealed class SimpleLockingModificationSynchronizer : ModificationSynchronizer
@@ -190,7 +203,7 @@ public sealed class SimpleLockingModificationSynchronizer : ModificationSynchron
 		lock (_sync) return action();
 	}
 
-	public override bool Modifying(out int version, Func<bool>? condition, Func<bool> action)
+	public override bool Modifying(out int version, Func<bool>? condition, Func<bool> action, Action<int>? onModify = null)
 	{
 		bool modified = false;
 		int ver = _version;
@@ -200,6 +213,7 @@ public sealed class SimpleLockingModificationSynchronizer : ModificationSynchron
 			() => modified = base.Modifying(out ver, null, action)
 		);
 		version = ver;
+		if (modified) onModify?.Invoke(version);
 		return modified;
 	}
 
@@ -259,19 +273,20 @@ public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 		return sync.Read(action);
 	}
 
-	public override bool Modifying(out int version, Func<bool>? condition, Func<bool> action)
+	public override bool Modifying(out int version, Func<bool>? condition, Func<bool> action, Action<int>? onModify = null)
 	{
 		AssertIsAlive();
 		ReaderWriterLockSlim sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 
 		var ver = _version;
-		var result =  (condition is null || sync.Read(condition)) // Try and early invalidate.
+		var modified =  (condition is null || sync.Read(condition)) // Try and early invalidate.
 			&& sync.WriteConditional(
 				() => AssertIsAlive() && (condition is null || condition()),
 				() => base.Modifying(out ver, null, action));
 
 		version = ver;
-		return result;
+		if(modified) onModify?.Invoke(version);
+		return modified;
 	}
 
 	public override bool Modifying<T>(out int version, ref T target, T newValue)
