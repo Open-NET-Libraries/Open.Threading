@@ -191,6 +191,10 @@ public sealed class SimpleLockingModificationSynchronizer : ModificationSynchron
 
 	public SimpleLockingModificationSynchronizer(object? sync = null) => _sync = sync ?? new object();
 
+	protected override void OnBeforeDispose() =>
+		// Allow for any current requests to complete.
+		ThreadSafety.TryLock(_sync, () => { }, 1000);
+
 	public override void Reading(Action action)
 	{
 		AssertIsAlive();
@@ -244,6 +248,10 @@ public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 
 	IDisposable? Cleanup() => Interlocked.Exchange(ref _sync, null);
 
+	protected override void OnBeforeDispose() =>
+		// Allow for any current requests to complete.
+		_sync!.TryWrite(1000, () => { });
+
 	protected override void OnDispose()
 	{
 		base.OnDispose();
@@ -253,6 +261,7 @@ public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 		{
 			s = Cleanup();
 		}
+
 		if (_lockOwned)
 		{
 			s?.Dispose();

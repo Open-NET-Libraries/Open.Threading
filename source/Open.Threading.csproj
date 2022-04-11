@@ -14,7 +14,7 @@
 			Part of the "Open" set of libraries.
 		</Description>
 		<PackageTags>collections;extensions;threadsafe;thread-safe;readwrite;read-write;readerwriterlock;readerwriterlockslim</PackageTags>
-		<Version>2.1.1</Version>
+		<Version>2.1.2</Version>
 		<Copyright>© electricessence (Oren F.) All rights reserved.</Copyright>
 		<PackageProjectUrl>https://github.com/Open-NET-Libraries/Open.Threading/</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/Open-NET-Libraries/Open.Threading/</RepositoryUrl>
