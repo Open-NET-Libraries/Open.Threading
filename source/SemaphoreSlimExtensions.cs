@@ -6,7 +6,7 @@ namespace Open.Threading;
 public static class SemaphoreSlimExtensions
 {
 	/// <summary>
-	/// Excutes an action within the context of a a Semaphore.
+	/// Executes an action within the context of a a Semaphore.
 	/// </summary>
 	/// <param name="target">The semaphore instance</param>
 	/// <param name="closure">The action to execute.</param>
@@ -18,26 +18,19 @@ public static class SemaphoreSlimExtensions
 			throw new ArgumentNullException(nameof(closure));
 		Contract.EndContractBlock();
 
+		target.WaitOne();
 		try
 		{
-			target.WaitOne();
 			closure();
 		}
 		finally
 		{
-			try
-			{
-				target.Release();
-			}
-			catch (SemaphoreFullException sfex)
-			{
-				Debug.WriteLine(sfex.ToString());
-			}
+			target.Release();
 		}
 	}
 
 	/// <summary>
-	/// Excutes an action within the context of a a SemaphoreSlim.
+	/// Executes an action within the context of a a SemaphoreSlim.
 	/// </summary>
 	/// <param name="target">The semaphore instance</param>
 	/// <param name="closure">The action to execute.</param>
@@ -49,26 +42,19 @@ public static class SemaphoreSlimExtensions
 			throw new ArgumentNullException(nameof(closure));
 		Contract.EndContractBlock();
 
+		target.Wait();
 		try
 		{
-			target.Wait();
 			closure();
 		}
 		finally
 		{
-			try
-			{
-				target.Release();
-			}
-			catch (SemaphoreFullException sfex)
-			{
-				Debug.WriteLine(sfex.ToString());
-			}
+			target.Release();
 		}
 	}
 
 	/// <summary>
-	/// Excutes a function within the context of a a Semaphore.
+	/// Executes a function within the context of a a Semaphore.
 	/// </summary>
 	/// <typeparam name="T">Type of the result.</typeparam>
 	/// <param name="target">The semaphore instance</param>
@@ -82,26 +68,19 @@ public static class SemaphoreSlimExtensions
 			throw new ArgumentNullException(nameof(closure));
 		Contract.EndContractBlock();
 
+		target.WaitOne();
 		try
 		{
-			target.WaitOne();
 			return closure();
 		}
 		finally
 		{
-			try
-			{
-				target.Release();
-			}
-			catch (SemaphoreFullException sfex)
-			{
-				Debug.WriteLine(sfex.ToString());
-			}
+			target.Release();
 		}
 	}
 
 	/// <summary>
-	/// Excutes a function within the context of a a SemaphoreSlim.
+	/// Executes a function within the context of a a SemaphoreSlim.
 	/// </summary>
 	/// <typeparam name="T">Type of the result.</typeparam>
 	/// <param name="target">The semaphore instance</param>
@@ -115,32 +94,25 @@ public static class SemaphoreSlimExtensions
 			throw new ArgumentNullException(nameof(closure));
 		Contract.EndContractBlock();
 
+		target.Wait();
 		try
 		{
-			target.Wait();
 			return closure();
 		}
 		finally
 		{
-			try
-			{
-				target.Release();
-			}
-			catch (SemaphoreFullException sfex)
-			{
-				Debug.WriteLine(sfex.ToString());
-			}
+			target.Release();
 		}
 	}
 
 	/// <summary>
-	/// Excutes a task within the context of a a SemaphoreSlim.
+	/// Executes a task within the context of a a SemaphoreSlim.
 	/// </summary>
 	/// <typeparam name="T">Type of the result.</typeparam>
 	/// <param name="target">The semaphore instance</param>
 	/// <param name="closure">The function to execute as a task.</param>
 	/// <returns>A task containing the result.</returns>
-	public static async Task<T> ExecuteAsync<T>(this SemaphoreSlim target, Func<T> closure)
+	public static async Task<T> ExecuteAsync<T>(this SemaphoreSlim target, Func<T> closure, CancellationToken token = default)
 	{
 		if (target is null)
 			throw new ArgumentNullException(nameof(target));
@@ -148,32 +120,25 @@ public static class SemaphoreSlimExtensions
 			throw new ArgumentNullException(nameof(closure));
 		Contract.EndContractBlock();
 
+		await target.WaitAsync(token).ConfigureAwait(false);
 		try
 		{
-			await target.WaitAsync().ConfigureAwait(false);
 			return closure();
 		}
 		finally
 		{
-			try
-			{
-				target.Release();
-			}
-			catch (SemaphoreFullException sfex)
-			{
-				Debug.WriteLine(sfex.ToString());
-			}
+			target.Release();
 		}
 	}
 
 	/// <summary>
-	/// Excutes a task within the context of a a SemaphoreSlim.
+	/// Awaits a task within the context of a a SemaphoreSlim.
 	/// </summary>
 	/// <typeparam name="T">Type of the result.</typeparam>
 	/// <param name="target">The semaphore instance</param>
 	/// <param name="task">The task being waited on.</param>
 	/// <returns>The task provided.</returns>
-	public static async Task<T> TaskExecuteAsync<T>(this SemaphoreSlim target, Task<T> task)
+	public static async Task<T> TaskWaitAsync<T>(this SemaphoreSlim target, Task<T> task, CancellationToken token = default)
 	{
 		if (target is null)
 			throw new ArgumentNullException(nameof(target));
@@ -181,51 +146,87 @@ public static class SemaphoreSlimExtensions
 			throw new ArgumentNullException(nameof(task));
 		Contract.EndContractBlock();
 
+		await target.WaitAsync(token).ConfigureAwait(false);
 		try
 		{
-			await target.WaitAsync().ConfigureAwait(false);
 			return await task;
 		}
 		finally
 		{
-			try
-			{
-				target.Release();
-			}
-			catch (SemaphoreFullException sfex)
-			{
-				Debug.WriteLine(sfex.ToString());
-			}
+			target.Release();
 		}
 	}
 
 	/// <summary>
-	/// Excutes a task within the context of a a SemaphoreSlim.
+	/// Awaits a task within the context of a a SemaphoreSlim.
 	/// </summary>
 	/// <typeparam name="T">Type of the result.</typeparam>
 	/// <param name="target">The semaphore instance</param>
 	/// <param name="task">The task being waited on.</param>
 	/// <returns>The task provided.</returns>
-	public static async Task<T> ExecuteAsync<T>(this SemaphoreSlim target, ValueTask<T> task)
+	public static async Task<T> WaitAsync<T>(this SemaphoreSlim target, ValueTask<T> task, CancellationToken token = default)
 	{
 		if (target is null) throw new ArgumentNullException(nameof(target));
 		Contract.EndContractBlock();
 
+		await target.WaitAsync(token).ConfigureAwait(false);
 		try
 		{
-			await target.WaitAsync().ConfigureAwait(false);
 			return await task;
 		}
 		finally
 		{
-			try
-			{
-				target.Release();
-			}
-			catch (SemaphoreFullException sfex)
-			{
-				Debug.WriteLine(sfex.ToString());
-			}
+			target.Release();
+		}
+	}
+
+
+	/// <summary>
+	/// Executes a task within the context of a a SemaphoreSlim.
+	/// </summary>
+	/// <typeparam name="T">Type of the result.</typeparam>
+	/// <param name="target">The semaphore instance</param>
+	/// <param name="factory">The delegate to create the task to be waited on.</param>
+	/// <returns>The task provided.</returns>
+	public static async Task<T> TaskExecuteAsync<T>(this SemaphoreSlim target, Func<Task<T>> factory, CancellationToken token = default)
+	{
+		if (target is null)
+			throw new ArgumentNullException(nameof(target));
+		if (factory is null)
+			throw new ArgumentNullException(nameof(factory));
+		Contract.EndContractBlock();
+
+		await target.WaitAsync(token).ConfigureAwait(false);
+		try
+		{
+			return await factory();
+		}
+		finally
+		{
+			target.Release();
+		}
+	}
+
+	/// <summary>
+	/// Awaits a task within the context of a a SemaphoreSlim.
+	/// </summary>
+	/// <typeparam name="T">Type of the result.</typeparam>
+	/// <param name="target">The semaphore instance</param>
+	/// <param name="factory">The delegate to create the task to be waited on.</param>
+	/// <returns>The task provided.</returns>
+	public static async Task<T> ExecuteAsync<T>(this SemaphoreSlim target, Func<ValueTask<T>> factory, CancellationToken token = default)
+	{
+		if (target is null) throw new ArgumentNullException(nameof(target));
+		Contract.EndContractBlock();
+
+		await target.WaitAsync(token).ConfigureAwait(false);
+		try
+		{
+			return await factory();
+		}
+		finally
+		{
+			target.Release();
 		}
 	}
 }
