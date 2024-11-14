@@ -480,6 +480,7 @@ public static class ThreadSafety
 	/// <typeparam name="TKey">The type of the key.</typeparam>
 	/// <typeparam name="TSyncObject">The type of the object.</typeparam>
 	public class Helper<TKey, TSyncObject>
+		where TKey : notnull
 		where TSyncObject : class, new()
 	{
 		protected readonly ConcurrentDictionary<TKey, TSyncObject> _locks = new();
@@ -905,7 +906,7 @@ public static class ThreadSafety
 			ValidatePath(path);
 			Contract.EndContractBlock();
 
-			path = Path.GetDirectoryName(path);
+			path = Path.GetDirectoryName(path)!;
 
 			if (!ReadFrom(path, () => Directory.Exists(path), timeout))
 			{

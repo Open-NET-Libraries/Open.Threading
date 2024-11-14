@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Open.Threading.Tasks;
 
@@ -8,7 +7,7 @@ public class AsyncQuery<TResult>(Func<Progress, TResult> query, TaskScheduler? s
 {
 #if NETSTANDARD2_0
 #else
-	[AllowNull]
+	[System.Diagnostics.CodeAnalysis.AllowNull]
 #endif
 	TResult _latest = default!;
 
@@ -31,6 +30,7 @@ public class AsyncQuery<TResult>(Func<Progress, TResult> query, TaskScheduler? s
 			() =>
 			{
 				task = new Task<TResult>(Process!, new Progress());
+				Debug.Assert(Scheduler is not null);
 				task.Start(Scheduler);
 				InternalTask = InternalTaskValued = task;
 				Count++;
@@ -46,7 +46,7 @@ public class AsyncQuery<TResult>(Func<Progress, TResult> query, TaskScheduler? s
 
 #if NETSTANDARD2_0
 #else
-	[return: MaybeNull]
+	[return: System.Diagnostics.CodeAnalysis.MaybeNull]
 #endif
 	protected new TResult Process(object progress)
 	{
@@ -74,7 +74,11 @@ public class AsyncQuery<TResult>(Func<Progress, TResult> query, TaskScheduler? s
 		get
 		{
 			var t = InternalTask;
-			if (t is not null) return (Progress)t.AsyncState;
+			if (t is not null)
+			{
+				Debug.Assert(t.AsyncState is not null);
+				return (Progress)t.AsyncState;
+			}
 			var result = new Progress();
 			if (IsLatestAvailable)
 				result.Finish();
@@ -166,7 +170,7 @@ public class AsyncQuery<TResult>(Func<Progress, TResult> query, TaskScheduler? s
 	public virtual bool TryGetLatest(
 #if NETSTANDARD2_0
 #else
-		[NotNullWhen(true)]
+		[System.Diagnostics.CodeAnalysis.NotNullWhen(true)]
 #endif
 		out TResult latest,
 		out DateTime completed)

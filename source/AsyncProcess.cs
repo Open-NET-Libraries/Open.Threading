@@ -31,12 +31,9 @@ public class AsyncProcess<T> : DisposableBase
 
 	public bool HasBeenRun => Count != 0;
 
-	protected virtual void Process(object progress)
+	protected virtual void Process(object? progress)
 	{
-		if (progress is null)
-			throw new ArgumentNullException(nameof(progress));
-		Contract.EndContractBlock();
-
+		Debug.Assert(progress is not null);
 		var p = (T)progress;
 		try
 		{
@@ -62,6 +59,8 @@ public class AsyncProcess<T> : DisposableBase
 			}, () =>
 			{
 				task = new Task(Process, new T());
+
+				Debug.Assert(Scheduler is not null);
 				task.Start(Scheduler);
 				InternalTask = task;
 				Count++;
@@ -99,8 +98,8 @@ public class AsyncProcess<T> : DisposableBase
 				return new T();
 
 			var state = t.AsyncState;
-			var result = (T)state;
-			return result;
+			Debug.Assert(state is not null);
+			return (T)state;
 		}
 	}
 
@@ -143,8 +142,9 @@ public class AsyncProcess : AsyncProcess<Progress>
 		}
 	}
 
-	protected override void Process(object progress)
+	protected override void Process(object? progress)
 	{
+		Debug.Assert(progress is not null);
 		var p = (Progress)progress;
 		try
 		{

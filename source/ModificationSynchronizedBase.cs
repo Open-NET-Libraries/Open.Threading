@@ -78,7 +78,7 @@ public abstract class ModificationSynchronizedBase : DisposableBase
 
 	protected override void OnDispose() => SetSyncSynced(null);
 
-	protected void OnModified(object source, EventArgs e) => OnModified();
+	protected void OnModified(object? source, EventArgs e) => OnModified();
 
 	protected virtual void OnModified()
 	{
