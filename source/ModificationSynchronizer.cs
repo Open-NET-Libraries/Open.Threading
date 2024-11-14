@@ -1,4 +1,5 @@
 ﻿using Open.Disposable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
@@ -184,24 +185,36 @@ public class ModificationSynchronizer
 	}
 }
 
-public sealed class SimpleLockingModificationSynchronizer(object? sync = null) : ModificationSynchronizer
+public abstract class LockingModificationSynchronizerBase<TSync>
+	: ModificationSynchronizer
+	where TSync : class
 {
-	readonly object _sync = sync ?? new object();
+	readonly TSync _sync;
+
+	protected LockingModificationSynchronizerBase(TSync sync)
+	{
+		Debug.Assert(sync is not null);
+		_sync = sync;
+	}
 
 	protected override void OnBeforeDispose()
 		// Allow for any current requests to complete.
 		=> ThreadSafety.TryLock(_sync, () => { }, 1000);
 
+	protected virtual Lock GetLock(TSync sync) => new(sync);
+
 	public override void Reading(Action action)
 	{
 		AssertIsAlive();
-		lock (_sync) action();
+		using var @lock = GetLock(_sync);
+		action();
 	}
 
 	public override T Reading<T>(Func<T> action)
 	{
 		AssertIsAlive();
-		lock (_sync) return action();
+		using var @lock = GetLock(_sync);
+		return action();
 	}
 
 	public override bool Modifying(out int version, Func<bool>? condition, Func<bool> action, Action<int>? onModify = null)
@@ -227,10 +240,58 @@ public sealed class SimpleLockingModificationSynchronizer(object? sync = null) :
 			return false;
 		}
 
-		lock (_sync)
-			return base.Modifying(out version, ref target, newValue);
+		using var @lock = GetLock(_sync);
+		return base.Modifying(out version, ref target, newValue);
 	}
 }
+
+#if NET9_0_OR_GREATER
+public sealed class SystemLockModificationSynchronizer(System.Threading.Lock sync)
+	: LockingModificationSynchronizerBase<System.Threading.Lock>(sync ?? new())
+{
+	protected override Lock GetLock(System.Threading.Lock sync) => new(sync);
+}
+#endif
+
+#if NET9_0_OR_GREATER
+public sealed class SimpleLockingModificationSynchronizer()
+	: LockingModificationSynchronizerBase<System.Threading.Lock>(new())
+{
+	protected override Lock GetLock(System.Threading.Lock sync) => new(sync);
+}
+#else
+public sealed class SimpleLockingModificationSynchronizer()
+	: LockingModificationSynchronizerBase<object>(new())
+{
+}
+#endif
+
+[SuppressMessage("Style", "IDE0290:Use primary constructor")]
+public sealed class MonitorModificationSynchronizer
+	: LockingModificationSynchronizerBase<object>
+{
+#if NET9_0_OR_GREATER
+	static object ValidateLock(object sync)
+		=> sync is null
+			? throw new ArgumentNullException(nameof(sync))
+			: sync is System.Threading.Lock
+				? throw new ArgumentException(
+					"System.Threading.Lock is not supported.  use SimpleLockingModificationSynchronizer instead.")
+				: sync;
+
+	public MonitorModificationSynchronizer(object sync)
+		: base(ValidateLock(sync))
+	{
+	}
+#else
+	public MonitorModificationSynchronizer(object sync)
+		:base(sync)
+	{
+	}
+#endif
+
+}
+
 
 public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 {
@@ -285,13 +346,13 @@ public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 		ReaderWriterLockSlim sync = _sync ?? throw new ObjectDisposedException(GetType().ToString());
 
 		var ver = _version;
-		var modified =  (condition is null || sync.Read(condition)) // Try and early invalidate.
+		var modified = (condition is null || sync.Read(condition)) // Try and early invalidate.
 			&& sync.WriteConditional(
 				() => AssertIsAlive() && (condition is null || condition()),
 				() => base.Modifying(out ver, null, action));
 
 		version = ver;
-		if(modified) onModify?.Invoke(version);
+		if (modified) onModify?.Invoke(version);
 		return modified;
 	}
 

@@ -7,7 +7,7 @@ public class ArrayBenchmark
 	const int Length = 3;
 	const int Count = Length * 10000000;
 	readonly int[] TestData = Enumerable.Range(0, Length).ToArray();
-	readonly object[] Locks = Enumerable.Range(0, Length).Select(_=>new object()).ToArray();
+	readonly System.Threading.Lock[] Locks = Enumerable.Range(0, Length).Select(_ => new System.Threading.Lock()).ToArray();
 	readonly ReaderWriterLockSlim RWLock = new();
 	readonly ReaderWriterLockSlim[] RWLocks = Enumerable.Range(0, Length).Select(_ => new ReaderWriterLockSlim()).ToArray();
 

@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Open.Threading;
 
@@ -66,6 +67,30 @@ public static class ThreadSafety
 		return closure();
 	}
 
+#if NET9_0_OR_GREATER
+	/// <inheritdoc cref="Lock{TSync}(TSync, Action, LockTimeout)"/>
+	public static void Lock(this System.Threading.Lock syncObject, Action closure, LockTimeout timeout = default)
+	{
+		if (closure is null) throw new ArgumentNullException(nameof(closure));
+		Contract.EndContractBlock();
+		using var @lock = new Lock(syncObject, timeout, true);
+		Debug.Assert(@lock.LockHeld);
+		closure();
+	}
+
+	/// <returns>The action of the query.</returns>
+	/// <inheritdoc cref="Lock{TSync, T}(TSync, Func{T}, LockTimeout)"/>
+	public static T Lock<T>(this System.Threading.Lock syncObject, Func<T> closure, LockTimeout timeout = default)
+	{
+		if (closure is null) throw new ArgumentNullException(nameof(closure));
+		Contract.EndContractBlock();
+
+		using var @lock = new Lock(syncObject, timeout, true);
+		Debug.Assert(@lock.LockHeld);
+		return closure();
+	}
+#endif
+
 	/// <summary>
 	/// Applies a lock on the syncObject before executing the provided Action with a timeout.
 	/// </summary>
@@ -92,9 +117,27 @@ public static class ThreadSafety
 		return true;
 	}
 
-	/// <inheritdoc cref="TryLock{TSync}(TSync, Action, LockTimeout)"/>
+	/// <inheritdoc cref="TryLock{TSync}(TSync, Action, LockTimeout, bool)"/>
 	public static bool TryLock<TSync>(TSync syncObject, Action closure) where TSync : class
 		=> TryLock(syncObject, closure, 0, false);
+
+#if NET9_0_OR_GREATER
+	/// <inheritdoc cref="TryLock{TSync}(TSync, Action, LockTimeout, bool)"/>
+	public static bool TryLock(this System.Threading.Lock syncObject, Action closure, LockTimeout timeout, bool throwsOnTimeout = false)
+	{
+		if (closure is null) throw new ArgumentNullException(nameof(closure));
+		Contract.EndContractBlock();
+
+		using var @lock = new Lock(syncObject, timeout, throwsOnTimeout);
+		if (!@lock.LockHeld) return false;
+		closure();
+		return true;
+	}
+
+	/// <inheritdoc cref="TryLock{TSync}(TSync, Action, LockTimeout, bool)"/>
+	public static bool TryLock(this System.Threading.Lock syncObject, Action closure)
+		=> TryLock(syncObject, closure, 0, false);
+#endif
 
 	/// <summary>
 	/// Sychronizes executing the Action only if the condition is true.
@@ -117,11 +160,10 @@ public static class ThreadSafety
 		Contract.EndContractBlock();
 
 		if (!condition(false)) return false;
-		lock (syncObject)
-		{
-			if (!condition(true)) return false;
-			closure();
-		}
+
+		using var @lock = new Lock(syncObject);
+		if (!condition(true)) return false;
+		closure();
 		return true;
 	}
 
@@ -145,12 +187,9 @@ public static class ThreadSafety
 			throw new ArgumentNullException(nameof(closure));
 		Contract.EndContractBlock();
 
+		using var @lock = new Lock(syncObject);
 		if (!condition()) return false;
-		lock (syncObject)
-		{
-			if (!condition()) return false;
-			closure();
-		}
+		closure();
 		return true;
 	}
 
@@ -213,10 +252,9 @@ public static class ThreadSafety
 
 		if (target is null)
 		{
-			lock (syncObject)
-			{
-				target ??= closure();
-			}
+			using var @lock = new Lock(syncObject);
+			Debug.Assert(@lock.LockHeld);
+			target ??= closure();
 		}
 		return target;
 	}
