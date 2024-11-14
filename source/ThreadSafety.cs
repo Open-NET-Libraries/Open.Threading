@@ -13,7 +13,7 @@ public static class ThreadSafety
 	public static bool IsValidSyncObject(object? syncObject)
 		=> Threading.Lock.IsValidSyncObject(syncObject);
 
-	internal static object AssertSyncObject(object? syncObject)
+	internal static object AssertSyncObject(object syncObject)
 		=> Threading.Lock.AssertSyncObject(syncObject);
 
 	public static bool InterlockedExchangeIfLessThanComparison(ref int location, int comparison, int newValue)
@@ -215,8 +215,7 @@ public static class ThreadSafety
 		{
 			lock (syncObject)
 			{
-				if (target is null)
-					target = closure();
+				target ??= closure();
 			}
 		}
 		return target;
@@ -236,8 +235,7 @@ public static class ThreadSafety
 		return lazy.Value;
 	}
 
-	private static readonly ConditionalWeakTable<object, ReadWriteHelper<object>> _sychronizeReadWriteRegistry
-		= new();
+	private static readonly ConditionalWeakTable<object, ReadWriteHelper<object>> _sychronizeReadWriteRegistry = new();
 
 	private static ReadWriteHelper<object> GetReadWriteHelper(object key)
 	{
@@ -553,9 +551,7 @@ public static class ThreadSafety
 	/// </summary>
 	/// <typeparam name="TKey">The type of the key.</typeparam>
 	public class Helper<TKey> : Helper<TKey, object>
-		where TKey : class
-	{
-	}
+		where TKey : class;
 
 	/// <inheritdoc />
 	/// <summary>
@@ -563,9 +559,7 @@ public static class ThreadSafety
 	/// The keys are strings.
 	/// Example: Coupling this with Dictionary could simplify synchronized access to the key-values.
 	/// </summary>
-	public class Helper : Helper<string>
-	{
-	}
+	public class Helper : Helper<string>;
 
 	/// <summary>
 	/// <para>A set of extensions that helps synchronize and improve the robustness of file access.</para>

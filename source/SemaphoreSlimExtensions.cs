@@ -180,7 +180,6 @@ public static class SemaphoreSlimExtensions
 		}
 	}
 
-
 	/// <summary>
 	/// Executes a task within the context of a a SemaphoreSlim.
 	/// </summary>

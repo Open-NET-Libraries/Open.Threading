@@ -3,19 +3,18 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Open.Threading.Tasks;
 
-public class AsyncQuery<TResult> : AsyncProcess
+public class AsyncQuery<TResult>(Func<Progress, TResult> query, TaskScheduler? scheduler = null)
+	: AsyncProcess(scheduler)
 {
-#if NETSTANDARD2_1
+#if NETSTANDARD2_0
+#else
 	[AllowNull]
 #endif
 	TResult _latest = default!;
 
-	protected new Func<Progress, TResult>? Closure { get; private set; }
+	protected new Func<Progress, TResult>? Closure { get; private set; } = query ?? throw new ArgumentNullException(nameof(query));
 
 	protected Task<TResult>? InternalTaskValued { get; private set; }
-
-	public AsyncQuery(Func<Progress, TResult> query, TaskScheduler? scheduler = null)
-		: base(scheduler) => Closure = query ?? throw new ArgumentNullException(nameof(query));
 
 	protected Task<TResult> EnsureProcessValued(bool once, TimeSpan? timeAllowedBeforeRefresh = null)
 	{
@@ -45,7 +44,8 @@ public class AsyncQuery<TResult> : AsyncProcess
 	protected override Task EnsureProcess(bool once, TimeSpan? timeAllowedBeforeRefresh = null)
 		=> EnsureProcessValued(once, timeAllowedBeforeRefresh);
 
-#if NETSTANDARD2_1
+#if NETSTANDARD2_0
+#else
 	[return: MaybeNull]
 #endif
 	protected new TResult Process(object progress)
@@ -164,7 +164,8 @@ public class AsyncQuery<TResult> : AsyncProcess
 	}
 
 	public virtual bool TryGetLatest(
-#if NETSTANDARD2_1
+#if NETSTANDARD2_0
+#else
 		[NotNullWhen(true)]
 #endif
 		out TResult latest,

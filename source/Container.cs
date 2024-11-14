@@ -58,7 +58,8 @@ public abstract class ContainerBase<T> : DisposableBase, IContainer<T>
 {
 	protected readonly ReaderWriterLockSlim SyncLock;
 
-#if NETSTANDARD2_1
+#if NETSTANDARD2_0
+#else
 	[AllowNull]
 #endif
 	private T _value = default!;

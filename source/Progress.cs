@@ -71,7 +71,8 @@ public class Progress
 		}
 	}
 
-#if NETSTANDARD2_1
+#if NETSTANDARD2_0
+#else
 	[return: MaybeNull]
 #endif
 	public T Execute<T>(Func<T> query, bool propagateException = false)

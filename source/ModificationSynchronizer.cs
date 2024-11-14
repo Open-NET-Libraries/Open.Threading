@@ -58,7 +58,7 @@ public static class ModificationSynchronizerExtensions
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool Modifying<T>(
-		this IModificationSynchronizer synchronizer, 
+		this IModificationSynchronizer synchronizer,
 		ref T target, T newValue)
 		=> synchronizer.Modifying(out _, ref target, newValue);
 }
@@ -182,18 +182,15 @@ public class ModificationSynchronizer
 
 		return true;
 	}
-
 }
 
-public sealed class SimpleLockingModificationSynchronizer : ModificationSynchronizer
+public sealed class SimpleLockingModificationSynchronizer(object? sync = null) : ModificationSynchronizer
 {
-	readonly object _sync;
+	readonly object _sync = sync ?? new object();
 
-	public SimpleLockingModificationSynchronizer(object? sync = null) => _sync = sync ?? new object();
-
-	protected override void OnBeforeDispose() =>
+	protected override void OnBeforeDispose()
 		// Allow for any current requests to complete.
-		ThreadSafety.TryLock(_sync, () => { }, 1000);
+		=> ThreadSafety.TryLock(_sync, () => { }, 1000);
 
 	public override void Reading(Action action)
 	{
@@ -246,16 +243,16 @@ public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 		_sync = sync ?? new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 	}
 
-	IDisposable? Cleanup() => Interlocked.Exchange(ref _sync, null);
+	ReaderWriterLockSlim? Cleanup() => Interlocked.Exchange(ref _sync, null);
 
-	protected override void OnBeforeDispose() =>
+	protected override void OnBeforeDispose()
 		// Allow for any current requests to complete.
-		_sync!.TryWrite(1000, () => { });
+		=> _sync!.TryWrite(1000, () => { });
 
 	protected override void OnDispose()
 	{
 		base.OnDispose();
-		IDisposable? s = null;
+		ReaderWriterLockSlim? s = null;
 		// OnDispose() is only called once so _sync cannot be null at this point.
 		if (!_sync!.TryWrite(10  /* Give any cleanup a chance. */, () => s = Cleanup()))
 		{
