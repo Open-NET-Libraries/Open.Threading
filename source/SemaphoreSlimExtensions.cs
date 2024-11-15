@@ -148,7 +148,7 @@ public static class SemaphoreSlimExtensions
 		await target.WaitAsync(token).ConfigureAwait(false);
 		try
 		{
-			return await task;
+			return await task.ConfigureAwait(false);
 		}
 		finally
 		{
@@ -171,7 +171,7 @@ public static class SemaphoreSlimExtensions
 		await target.WaitAsync(token).ConfigureAwait(false);
 		try
 		{
-			return await task;
+			return await task.ConfigureAwait(false);
 		}
 		finally
 		{
@@ -197,7 +197,7 @@ public static class SemaphoreSlimExtensions
 		await target.WaitAsync(token).ConfigureAwait(false);
 		try
 		{
-			return await factory();
+			return await factory().ConfigureAwait(false);
 		}
 		finally
 		{
@@ -220,7 +220,7 @@ public static class SemaphoreSlimExtensions
 		await target.WaitAsync(token).ConfigureAwait(false);
 		try
 		{
-			return await factory();
+			return await factory().ConfigureAwait(false);
 		}
 		finally
 		{
