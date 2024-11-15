@@ -292,7 +292,6 @@ public sealed class MonitorModificationSynchronizer
 
 }
 
-
 public sealed class ReadWriteModificationSynchronizer : ModificationSynchronizer
 {
 	ReaderWriterLockSlim? _sync;

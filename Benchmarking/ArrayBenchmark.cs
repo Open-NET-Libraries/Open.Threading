@@ -5,7 +5,8 @@ namespace Open.Threading.Benchmarking;
 public class ArrayBenchmark
 {
 	const int Length = 3;
-	const int Count = Length * 10000000;
+	const int Count = Length * 1000000;
+	readonly System.Threading.Lock SysLock = new();
 	readonly int[] TestData = Enumerable.Range(0, Length).ToArray();
 	readonly System.Threading.Lock[] Locks = Enumerable.Range(0, Length).Select(_ => new System.Threading.Lock()).ToArray();
 	readonly ReaderWriterLockSlim RWLock = new();
@@ -16,10 +17,17 @@ public class ArrayBenchmark
 		=> Parallel.For(0, Count, i => _ = TestData[i % Length]);
 
 	[Benchmark]
-	public void RandomParallelSingleLockReads()
+	public void RandomParallelSingleMonitorLockReads()
 		=> Parallel.For(0, Count, i =>
 		{
 			lock (TestData) _ = TestData[i % Length];
+		});
+
+	[Benchmark]
+	public void RandomParallelSingleSystemLockReads()
+		=> Parallel.For(0, Count, i =>
+		{
+			lock (SysLock) _ = TestData[i % Length];
 		});
 
 	[Benchmark]
@@ -36,6 +44,15 @@ public class ArrayBenchmark
 		{
 			var n = i % Length;
 			lock (Locks[n]) _ = TestData[n];
+		});
+
+	[Benchmark]
+	public void RandomParallelUsingLockedReads()
+		=> Parallel.For(0, Count, i =>
+		{
+			var n = i % Length;
+			using var @lock = new Lock(Locks[n]);
+			_ = TestData[n];
 		});
 
 	[Benchmark]
