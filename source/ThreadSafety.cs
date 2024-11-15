@@ -900,7 +900,7 @@ public static class ThreadSafety
 					}
 
 					if (failCount != 0)
-						await Task.Delay(millisecondsRetryDelay);
+						await Task.Delay(millisecondsRetryDelay).ConfigureAwait(false);
 				} while (failCount != 0);
 
 				return fs!;
