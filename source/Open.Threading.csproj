@@ -14,7 +14,7 @@
 			Part of the "Open" set of libraries.
 		</Description>
 		<PackageTags>collections;extensions;threadsafe;thread-safe;readwrite;read-write;readerwriterlock;readerwriterlockslim</PackageTags>
-		<Version>3.0.2</Version>
+		<Version>3.0.3</Version>
 		<Copyright>© electricessence (Oren F.) All rights reserved.</Copyright>
 		<PackageProjectUrl>https://github.com/Open-NET-Libraries/Open.Threading/</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/Open-NET-Libraries/Open.Threading/</RepositoryUrl>
@@ -27,6 +27,7 @@
 		<PackageIcon>logo.png</PackageIcon>
 		<AnalysisLevel>latest</AnalysisLevel>
 		<NoWarn>IDE0130;CA1510;RCS1123;IDE1006;</NoWarn>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -42,6 +43,10 @@
 		<None Include="../logo.png">
 			<Pack>True</Pack>
 			<PackagePath>/</PackagePath>
+		</None>
+		<None Include="../README.md">
+		  <Pack>True</Pack>
+		  <PackagePath>/</PackagePath>
 		</None>
 	</ItemGroup>
 
