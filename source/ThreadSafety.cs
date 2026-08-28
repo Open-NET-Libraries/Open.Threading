@@ -280,7 +280,8 @@ public static class ThreadSafety
 		AssertSyncObject(key);
 		Contract.EndContractBlock();
 		var result = _sychronizeReadWriteRegistry.GetValue(key, static _ => new ReadWriteHelper<object>());
-		return result ?? throw new NullReferenceException();
+		Debug.Assert(result is not null);
+		return result;
 	}
 
 	/// <inheritdoc cref="SynchronizeReadWrite{TSync, T}(TSync, object, ref T, Func{bool, bool}, Func{T}, LockTimeout, bool)"/>
