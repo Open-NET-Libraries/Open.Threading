@@ -279,7 +279,7 @@ public static class ThreadSafety
 	{
 		AssertSyncObject(key);
 		Contract.EndContractBlock();
-		var result = _sychronizeReadWriteRegistry.GetOrCreateValue(key);
+		var result = _sychronizeReadWriteRegistry.GetValue(key, static _ => new ReadWriteHelper<object>());
 		return result ?? throw new NullReferenceException();
 	}
 
